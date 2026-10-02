@@ -1,0 +1,341 @@
+/**
+ * Image Text Customizer - Text Editor & Property Manager
+ */
+
+class TextEditor {
+  constructor(canvasEditor, historyManager) {
+    this.canvasEditor = canvasEditor;
+    this.history = historyManager;
+    this.selectedObject = null;
+    this.isUpdatingUI = false;
+
+    this.initDOM();
+    this.bindEvents();
+  }
+
+  initDOM() {
+    this.dom = {
+      propertyPanel: document.getElementById('textPropertyContent'),
+      noSelectionNotice: document.getElementById('noSelectionNotice'),
+      textContent: document.getElementById('propTextContent'),
+      fontFamily: document.getElementById('propFontFamily'),
+      fontSize: document.getElementById('propFontSize'),
+      fontSizeVal: document.getElementById('propFontSizeVal'),
+      fontColor: document.getElementById('propFontColor'),
+      fontColorHex: document.getElementById('propFontColorHex'),
+      fontWeight: document.getElementById('propFontWeight'),
+      btnItalic: document.getElementById('propItalic'),
+      btnCaseUpper: document.getElementById('propCaseUpper'),
+      btnCaseLower: document.getElementById('propCaseLower'),
+      alignButtons: document.querySelectorAll('.btn-align'),
+      opacity: document.getElementById('propOpacity'),
+      opacityVal: document.getElementById('propOpacityVal'),
+      letterSpacing: document.getElementById('propLetterSpacing'),
+      letterSpacingVal: document.getElementById('propLetterSpacingVal'),
+      lineHeight: document.getElementById('propLineHeight'),
+      lineHeightVal: document.getElementById('propLineHeightVal'),
+      rotation: document.getElementById('propRotation'),
+      rotationVal: document.getElementById('propRotationVal'),
+      repairBackground: document.getElementById('propRepairBackground'),
+      repairMethod: document.getElementById('propRepairMethod'),
+      repairPadding: document.getElementById('propRepairPadding'),
+      repairPaddingVal: document.getElementById('propRepairPaddingVal'),
+      // Floating toolbar elements
+      floatingToolbar: document.getElementById('floatingToolbar'),
+      btnFloatingEdit: document.getElementById('floatingEditBtn'),
+      btnFloatingDuplicate: document.getElementById('floatingDuplicateBtn'),
+      btnFloatingDelete: document.getElementById('floatingDeleteBtn'),
+      // Inline text editor modal/popover
+      quickEditModal: document.getElementById('quickEditModal'),
+      quickEditText: document.getElementById('quickEditText'),
+      btnQuickApply: document.getElementById('btnQuickApply'),
+      btnQuickCancel: document.getElementById('btnQuickCancel')
+    };
+  }
+
+  bindEvents() {
+    // Text Content input
+    this.dom.textContent.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.text = e.target.value;
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Edit Text Content');
+    });
+
+    // Font Family
+    this.dom.fontFamily.addEventListener('change', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.fontFamily = e.target.value;
+      this.canvasEditor.render();
+      this.saveHistory('Change Font Family');
+    });
+
+    // Font Size Slider
+    this.dom.fontSize.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const size = parseInt(e.target.value, 10);
+      this.selectedObject.fontSize = size;
+      if (this.dom.fontSizeVal) this.dom.fontSizeVal.textContent = `${size}px`;
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Font Size');
+    });
+
+    // Font Color Picker
+    this.dom.fontColor.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.fillColor = e.target.value;
+      if (this.dom.fontColorHex) this.dom.fontColorHex.value = e.target.value.toUpperCase();
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Text Color');
+    });
+
+    // Font Color Hex Input
+    if (this.dom.fontColorHex) {
+      this.dom.fontColorHex.addEventListener('change', (e) => {
+        if (!this.selectedObject || this.isUpdatingUI) return;
+        let hex = e.target.value.trim();
+        if (!hex.startsWith('#')) hex = '#' + hex;
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+          this.selectedObject.fillColor = hex;
+          this.dom.fontColor.value = hex;
+          this.canvasEditor.render();
+          this.saveHistory('Change Text Color');
+        }
+      });
+    }
+
+    // Font Weight
+    this.dom.fontWeight.addEventListener('change', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.fontWeight = e.target.value;
+      this.canvasEditor.render();
+      this.saveHistory('Change Font Weight');
+    });
+
+    // Italic Toggle
+    this.dom.btnItalic.addEventListener('click', () => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const isItalic = this.selectedObject.fontStyle === 'italic';
+      this.selectedObject.fontStyle = isItalic ? 'normal' : 'italic';
+      this.dom.btnItalic.classList.toggle('active', !isItalic);
+      this.canvasEditor.render();
+      this.saveHistory('Toggle Italic');
+    });
+
+    // Case conversions
+    this.dom.btnCaseUpper.addEventListener('click', () => {
+      if (!this.selectedObject) return;
+      this.selectedObject.text = this.selectedObject.text.toUpperCase();
+      this.dom.textContent.value = this.selectedObject.text;
+      this.canvasEditor.render();
+      this.saveHistory('Transform Uppercase');
+    });
+
+    this.dom.btnCaseLower.addEventListener('click', () => {
+      if (!this.selectedObject) return;
+      this.selectedObject.text = this.selectedObject.text.toLowerCase();
+      this.dom.textContent.value = this.selectedObject.text;
+      this.canvasEditor.render();
+      this.saveHistory('Transform Lowercase');
+    });
+
+    // Align buttons
+    this.dom.alignButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!this.selectedObject) return;
+        const align = btn.dataset.align;
+        this.selectedObject.textAlign = align;
+        this.dom.alignButtons.forEach(b => b.classList.toggle('active', b.dataset.align === align));
+        this.canvasEditor.render();
+        this.saveHistory('Change Alignment');
+      });
+    });
+
+    // Opacity
+    this.dom.opacity.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const val = parseFloat(e.target.value);
+      this.selectedObject.opacity = val;
+      if (this.dom.opacityVal) this.dom.opacityVal.textContent = `${Math.round(val * 100)}%`;
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Opacity');
+    });
+
+    // Letter Spacing
+    this.dom.letterSpacing.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const val = parseFloat(e.target.value);
+      this.selectedObject.letterSpacing = val;
+      if (this.dom.letterSpacingVal) this.dom.letterSpacingVal.textContent = `${val}px`;
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Letter Spacing');
+    });
+
+    // Line Height
+    this.dom.lineHeight.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const val = parseFloat(e.target.value);
+      this.selectedObject.lineHeight = val;
+      if (this.dom.lineHeightVal) this.dom.lineHeightVal.textContent = val.toFixed(1);
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Line Height');
+    });
+
+    // Rotation
+    this.dom.rotation.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const val = parseInt(e.target.value, 10);
+      this.selectedObject.rotation = val;
+      if (this.dom.rotationVal) this.dom.rotationVal.textContent = `${val}°`;
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Rotation');
+    });
+
+    // Background Repair Toggle
+    this.dom.repairBackground.addEventListener('change', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.repairBackground = e.target.checked;
+      this.canvasEditor.invalidateBackground();
+      this.canvasEditor.render();
+      this.saveHistory('Toggle Background Repair');
+    });
+
+    // Background Repair Method
+    this.dom.repairMethod.addEventListener('change', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      this.selectedObject.repairMethod = e.target.value;
+      this.canvasEditor.invalidateBackground();
+      this.canvasEditor.render();
+      this.saveHistory('Change Repair Method');
+    });
+
+    // Background Repair Padding
+    this.dom.repairPadding.addEventListener('input', (e) => {
+      if (!this.selectedObject || this.isUpdatingUI) return;
+      const val = parseInt(e.target.value, 10);
+      this.selectedObject.repairPadding = val;
+      if (this.dom.repairPaddingVal) this.dom.repairPaddingVal.textContent = `${val}px`;
+      this.canvasEditor.invalidateBackground();
+      this.canvasEditor.render();
+      this.pushHistoryDebounced('Change Repair Padding');
+    });
+
+    // Floating Toolbar buttons
+    this.dom.btnFloatingEdit.addEventListener('click', () => this.openQuickEdit());
+    this.dom.btnFloatingDuplicate.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.canvasEditor.duplicateObject(this.selectedObject);
+      }
+    });
+    this.dom.btnFloatingDelete.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.canvasEditor.deleteObject(this.selectedObject.id);
+      }
+    });
+
+    // Quick Edit Modal
+    this.dom.btnQuickApply.addEventListener('click', () => {
+      if (this.selectedObject) {
+        this.selectedObject.text = this.dom.quickEditText.value;
+        this.dom.textContent.value = this.selectedObject.text;
+        this.canvasEditor.render();
+        this.saveHistory('Quick Edit Text');
+        this.closeQuickEdit();
+      }
+    });
+
+    this.dom.btnQuickCancel.addEventListener('click', () => this.closeQuickEdit());
+
+    this.pushHistoryDebounced = ITCUtils.debounce((action) => {
+      this.saveHistory(action);
+    }, 450);
+  }
+
+  saveHistory(action) {
+    if (this.canvasEditor) {
+      this.canvasEditor.saveHistoryState(action);
+    }
+  }
+
+  /**
+   * Select a text object and bind all its properties to the UI.
+   */
+  select(textObj) {
+    this.selectedObject = textObj;
+
+    if (!textObj) {
+      this.dom.propertyPanel.style.display = 'none';
+      this.dom.noSelectionNotice.style.display = 'flex';
+      this.dom.floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    this.isUpdatingUI = true;
+    this.dom.propertyPanel.style.display = 'block';
+    this.dom.noSelectionNotice.style.display = 'none';
+
+    // Populate values
+    this.dom.textContent.value = textObj.text || '';
+    this.dom.fontFamily.value = textObj.fontFamily || 'Arial';
+    this.dom.fontSize.value = textObj.fontSize || 32;
+    if (this.dom.fontSizeVal) this.dom.fontSizeVal.textContent = `${textObj.fontSize || 32}px`;
+
+    this.dom.fontColor.value = textObj.fillColor || '#000000';
+    if (this.dom.fontColorHex) this.dom.fontColorHex.value = (textObj.fillColor || '#000000').toUpperCase();
+
+    this.dom.fontWeight.value = textObj.fontWeight || 'normal';
+    this.dom.btnItalic.classList.toggle('active', textObj.fontStyle === 'italic');
+
+    this.dom.alignButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.align === (textObj.textAlign || 'left'));
+    });
+
+    const op = textObj.opacity !== undefined ? textObj.opacity : 1;
+    this.dom.opacity.value = op;
+    if (this.dom.opacityVal) this.dom.opacityVal.textContent = `${Math.round(op * 100)}%`;
+
+    const ls = textObj.letterSpacing || 0;
+    this.dom.letterSpacing.value = ls;
+    if (this.dom.letterSpacingVal) this.dom.letterSpacingVal.textContent = `${ls}px`;
+
+    const lh = textObj.lineHeight || 1.2;
+    this.dom.lineHeight.value = lh;
+    if (this.dom.lineHeightVal) this.dom.lineHeightVal.textContent = lh.toFixed(1);
+
+    const rot = textObj.rotation || 0;
+    this.dom.rotation.value = rot;
+    if (this.dom.rotationVal) this.dom.rotationVal.textContent = `${rot}°`;
+
+    this.dom.repairBackground.checked = !!textObj.repairBackground;
+    this.dom.repairMethod.value = textObj.repairMethod || 'auto';
+    const pad = textObj.repairPadding !== undefined ? textObj.repairPadding : 4;
+    this.dom.repairPadding.value = pad;
+    if (this.dom.repairPaddingVal) this.dom.repairPaddingVal.textContent = `${pad}px`;
+
+    this.isUpdatingUI = false;
+  }
+
+  updateFloatingToolbarPosition(screenPos) {
+    if (!this.selectedObject || !screenPos) {
+      this.dom.floatingToolbar.style.display = 'none';
+      return;
+    }
+
+    this.dom.floatingToolbar.style.display = 'flex';
+    this.dom.floatingToolbar.style.left = `${screenPos.x}px`;
+    this.dom.floatingToolbar.style.top = `${screenPos.y - 48}px`;
+  }
+
+  openQuickEdit() {
+    if (!this.selectedObject) return;
+    this.dom.quickEditText.value = this.selectedObject.text;
+    this.dom.quickEditModal.classList.add('active');
+    setTimeout(() => this.dom.quickEditText.focus(), 50);
+  }
+
+  closeQuickEdit() {
+    this.dom.quickEditModal.classList.remove('active');
+  }
+}
+
+window.TextEditor = TextEditor;
