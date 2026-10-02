@@ -966,6 +966,16 @@ class CanvasEditor {
   }
 
   convertOCRToEditableText(ocrRegion) {
+    // If an editable object already exists for this OCR region, select and return it
+    const existing = this.textObjects.find(o => 
+      (o.originalBox && o.originalBox.id === ocrRegion.id) || 
+      o.id === `text-${ocrRegion.id}`
+    );
+    if (existing) {
+      this.selectObject(existing.id);
+      return existing;
+    }
+
     // Estimate style from underlying original image
     const style = this.repairEngine.estimateStyle(this.sourceCtx, ocrRegion);
 
