@@ -529,9 +529,12 @@ class App {
   }
 
   async runOCR() {
-    if (!this.canvasEditor.image) return;
+    if (!this.canvasEditor.image || this.ocr.isProcessing) return;
 
     const lang = this.dom.ocrLanguage.value;
+    const btnDetect = this.dom.toolDetectText;
+    if (btnDetect) btnDetect.disabled = true;
+
     this.dom.ocrProgressBar.style.display = 'block';
     this.dom.ocrProgressFill.style.width = '10%';
     this.dom.ocrStatusText.textContent = ITCUtils.getTranslation('ocrDetecting');
@@ -551,20 +554,23 @@ class App {
 
       if (regions && regions.length > 0) {
         this.canvasEditor.setOCRRegions(regions);
-        ITCUtils.showToast(
-          ITCUtils.getTranslation('ocrSuccess', { count: regions.length }),
-          'success'
-        );
+        const successMsg = ITCUtils.getTranslation('ocrSuccess', { count: regions.length });
+        ITCUtils.showToast(successMsg, 'success');
         this.dom.ocrStatusText.textContent = `${regions.length} text regions detected`;
       } else {
-        ITCUtils.showToast(ITCUtils.getTranslation('ocrFail'), 'warning', 4500);
+        ITCUtils.showToast('No reliable text was detected automatically. You can still add text manually.', 'info', 4500);
         this.dom.ocrStatusText.textContent = 'No text detected. Use "Add Text" manually.';
       }
     } catch (err) {
-      console.warn('OCR execution encountered issue:', err);
+      console.warn('OCR execution notice:', err);
       this.dom.ocrProgressBar.style.display = 'none';
-      ITCUtils.showToast(ITCUtils.getTranslation('ocrFail'), 'warning', 4500);
+      const userMsg = err.message && err.message.includes('Tamil')
+        ? err.message
+        : (ITCUtils.getTranslation('ocrFail') || 'Text detection could not be completed. You can still add text manually.');
+      ITCUtils.showToast(userMsg, 'warning', 5000);
       this.dom.ocrStatusText.textContent = 'Manual text editing ready.';
+    } finally {
+      if (btnDetect) btnDetect.disabled = false;
     }
   }
 
