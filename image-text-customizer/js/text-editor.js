@@ -53,7 +53,19 @@ class TextEditor {
       quickEditFontColor: document.getElementById('quickEditFontColor'),
       btnQuickModalClose: document.getElementById('btnQuickModalClose'),
       btnQuickApply: document.getElementById('btnQuickApply'),
-      btnQuickCancel: document.getElementById('btnQuickCancel')
+      btnQuickCancel: document.getElementById('btnQuickCancel'),
+      // Original Style Detected Elements
+      originalStyleCard: document.getElementById('originalStyleCard'),
+      styleMatchQuality: document.getElementById('styleMatchQuality'),
+      styleDetectedFont: document.getElementById('styleDetectedFont'),
+      styleDetectedSize: document.getElementById('styleDetectedSize'),
+      styleDetectedWeight: document.getElementById('styleDetectedWeight'),
+      styleColorSwatch: document.getElementById('styleColorSwatch'),
+      styleColorHex: document.getElementById('styleColorHex'),
+      styleDetectedAlign: document.getElementById('styleDetectedAlign'),
+      styleDetectedAngle: document.getElementById('styleDetectedAngle'),
+      propMatchOriginalStyle: document.getElementById('propMatchOriginalStyle'),
+      btnResetToManual: document.getElementById('btnResetToManual')
     };
   }
 
@@ -288,19 +300,57 @@ class TextEditor {
           this.selectedObject.fillColor = this.dom.quickEditFontColor.value;
         }
 
-        // Keep right sidebar properties in sync
-        this.select(this.selectedObject);
-
         this.canvasEditor.fitObjectToText(this.selectedObject);
+        this.canvasEditor.invalidateBackground();
         this.canvasEditor.render();
         this.canvasEditor.notifyObjectsChange();
+        this.select(this.selectedObject);
         this.saveHistory('Quick Edit Text');
         this.closeQuickEdit();
-        ITCUtils.showToast('Text updated!', 'success', 1200);
+        ITCUtils.showToast('Text updated with original style preserved!', 'success', 1200);
       }
     });
 
     this.dom.btnQuickCancel.addEventListener('click', () => this.closeQuickEdit());
+
+    // Match Original Style Toggle
+    if (this.dom.propMatchOriginalStyle) {
+      this.dom.propMatchOriginalStyle.addEventListener('change', (e) => {
+        if (!this.selectedObject || this.isUpdatingUI) return;
+        this.selectedObject.matchOriginalStyle = e.target.checked;
+        if (this.selectedObject.matchOriginalStyle && this.selectedObject.originalStyleProfile) {
+          const p = this.selectedObject.originalStyleProfile;
+          this.selectedObject.fontFamily = p.fontFamily;
+          this.selectedObject.fontWeight = p.fontWeight;
+          this.selectedObject.fontStyle = p.fontStyle;
+          this.selectedObject.fillColor = p.fillColor;
+          this.selectedObject.opacity = p.opacity;
+          this.selectedObject.letterSpacing = p.letterSpacing;
+          this.selectedObject.lineHeight = p.lineHeight;
+          this.selectedObject.textAlign = p.textAlign;
+          this.selectedObject.rotation = p.rotation;
+          this.selectedObject.stroke = p.stroke;
+          this.selectedObject.shadow = p.shadow;
+          this.canvasEditor.fitObjectToText(this.selectedObject);
+          this.select(this.selectedObject);
+          this.canvasEditor.render();
+          this.saveHistory('Match Original Style');
+          ITCUtils.showToast('Original style profile re-applied', 'success', 1500);
+        }
+      });
+    }
+
+    // Reset to Manual
+    if (this.dom.btnResetToManual) {
+      this.dom.btnResetToManual.addEventListener('click', () => {
+        if (!this.selectedObject) return;
+        this.selectedObject.matchOriginalStyle = false;
+        if (this.dom.propMatchOriginalStyle) {
+          this.dom.propMatchOriginalStyle.checked = false;
+        }
+        ITCUtils.showToast('Switched to manual customization mode', 'info', 1500);
+      });
+    }
 
     this.pushHistoryDebounced = ITCUtils.debounce((action) => {
       this.saveHistory(action);
@@ -375,6 +425,42 @@ class TextEditor {
     const pad = textObj.repairPadding !== undefined ? textObj.repairPadding : 4;
     this.dom.repairPadding.value = pad;
     if (this.dom.repairPaddingVal) this.dom.repairPaddingVal.textContent = `${pad}px`;
+
+    // Populate Original Style Detected Card if available
+    if (textObj.originalStyleProfile && this.dom.originalStyleCard) {
+      const p = textObj.originalStyleProfile;
+      this.dom.originalStyleCard.style.display = 'block';
+      if (this.dom.styleMatchQuality) {
+        this.dom.styleMatchQuality.textContent = `Match: ${p.matchQuality || 'High'} (${p.matchScore || 92}%)`;
+      }
+      if (this.dom.styleDetectedFont) {
+        this.dom.styleDetectedFont.textContent = `${p.fontFamily} (${p.matchType || 'Estimated'})`;
+        this.dom.styleDetectedFont.title = `${p.fontFamily} (${p.matchType || 'Estimated'})`;
+      }
+      if (this.dom.styleDetectedSize) {
+        this.dom.styleDetectedSize.textContent = `${p.fontSize}px`;
+      }
+      if (this.dom.styleDetectedWeight) {
+        this.dom.styleDetectedWeight.textContent = `${p.fontWeight}`;
+      }
+      if (this.dom.styleColorSwatch) {
+        this.dom.styleColorSwatch.style.backgroundColor = p.fillColor || '#ffffff';
+      }
+      if (this.dom.styleColorHex) {
+        this.dom.styleColorHex.textContent = p.fillColor || '#ffffff';
+      }
+      if (this.dom.styleDetectedAlign) {
+        this.dom.styleDetectedAlign.textContent = p.textAlign || 'center';
+      }
+      if (this.dom.styleDetectedAngle) {
+        this.dom.styleDetectedAngle.textContent = `${p.rotation || 0}°`;
+      }
+      if (this.dom.propMatchOriginalStyle) {
+        this.dom.propMatchOriginalStyle.checked = !!textObj.matchOriginalStyle;
+      }
+    } else if (this.dom.originalStyleCard) {
+      this.dom.originalStyleCard.style.display = 'none';
+    }
 
     this.isUpdatingUI = false;
   }

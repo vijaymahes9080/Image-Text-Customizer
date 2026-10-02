@@ -20,6 +20,7 @@ class CanvasEditor {
 
     // Engines
     this.repairEngine = new BackgroundRepairEngine();
+    this.styleAnalyzer = new TextStyleAnalyzer();
 
     // Image state
     this.image = null;
@@ -311,7 +312,18 @@ class CanvasEditor {
       ctx.save();
       ctx.translate(obj.x + obj.width / 2, obj.y + obj.height / 2);
       ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+      if (obj.scaleX || obj.scaleY) {
+        ctx.scale(obj.scaleX || 1, obj.scaleY || 1);
+      }
       ctx.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1.0;
+
+      // Apply shadow if present
+      if (obj.shadow) {
+        ctx.shadowColor = obj.shadow.color || 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = obj.shadow.blur || 4;
+        ctx.shadowOffsetX = obj.shadow.offsetX || 2;
+        ctx.shadowOffsetY = obj.shadow.offsetY || 2;
+      }
 
       // Calculate layout & metrics
       const lines = (obj.text || '').split('\n');
@@ -333,10 +345,26 @@ class CanvasEditor {
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        const lineY = startY + i * lineHeightPx;
+
+        // Render stroke / outline if present
+        if (obj.stroke && obj.stroke.width > 0) {
+          ctx.save();
+          ctx.strokeStyle = obj.stroke.color || '#000000';
+          ctx.lineWidth = obj.stroke.width * 2;
+          ctx.lineJoin = 'round';
+          if (obj.letterSpacing && obj.letterSpacing !== 0) {
+            this.renderStrokeTextWithLetterSpacing(ctx, line, drawX, lineY, obj.letterSpacing, obj.textAlign);
+          } else {
+            ctx.strokeText(line, drawX, lineY);
+          }
+          ctx.restore();
+        }
+
         if (obj.letterSpacing && obj.letterSpacing !== 0) {
-          this.renderTextWithLetterSpacing(ctx, line, drawX, startY + i * lineHeightPx, obj.letterSpacing, obj.textAlign);
+          this.renderTextWithLetterSpacing(ctx, line, drawX, lineY, obj.letterSpacing, obj.textAlign);
         } else {
-          ctx.fillText(line, drawX, startY + i * lineHeightPx);
+          ctx.fillText(line, drawX, lineY);
         }
       }
 
@@ -351,6 +379,23 @@ class CanvasEditor {
     const selected = this.getSelectedObject();
     if (selected && selected.visible) {
       this.renderSelectionOutline(ctx, selected);
+    }
+  }
+
+  renderStrokeTextWithLetterSpacing(ctx, text, x, y, letterSpacing, align) {
+    if (!text) return;
+    const chars = Array.from(text);
+    const totalSpacing = (chars.length - 1) * letterSpacing;
+    const baseWidth = ctx.measureText(text).width;
+    const fullWidth = baseWidth + totalSpacing;
+
+    let curX = x;
+    if (align === 'center') curX = x - fullWidth / 2;
+    else if (align === 'right') curX = x - fullWidth;
+
+    for (let i = 0; i < chars.length; i++) {
+      ctx.strokeText(chars[i], curX, y);
+      curX += ctx.measureText(chars[i]).width + letterSpacing;
     }
   }
 
@@ -881,6 +926,13 @@ class CanvasEditor {
 
   fitObjectToText(obj) {
     if (!obj || !obj.text) return;
+
+    // Use intelligent auto-fit if original style matching is enabled
+    if (obj.matchOriginalStyle && obj.originalStyleProfile && this.styleAnalyzer) {
+      this.styleAnalyzer.autoFitReplacementText(obj.originalStyleProfile, obj.text, obj);
+      return;
+    }
+
     const lines = String(obj.text).split('\n');
     const fontSize = obj.fontSize || 32;
     const lineHeightPx = fontSize * (obj.lineHeight || 1.2);
@@ -892,7 +944,7 @@ class CanvasEditor {
 
     let maxW = 0;
     for (const line of lines) {
-      let w = this.ctx.measureText(line).width;
+      let w = this.ctx.measureText(line).width * (obj.scaleX || 1.0);
       if (obj.letterSpacing && obj.letterSpacing !== 0) {
         w += Math.max(0, Array.from(line).length - 1) * obj.letterSpacing;
       }
@@ -935,6 +987,8 @@ class CanvasEditor {
       width: 180,
       height: 48,
       rotation: 0,
+      scaleX: 1.0,
+      scaleY: 1.0,
       fontFamily: 'Inter',
       fontSize: 32,
       fontWeight: 'bold',
@@ -944,10 +998,14 @@ class CanvasEditor {
       letterSpacing: 0,
       lineHeight: 1.2,
       textAlign: 'center',
+      stroke: null,
+      shadow: null,
       repairBackground: false,
       repairMethod: 'auto',
       repairPadding: 4,
       originalBox: null,
+      originalStyleProfile: null,
+      matchOriginalStyle: false,
       isOCR: false,
       visible: true
     };
@@ -976,47 +1034,43 @@ class CanvasEditor {
       return existing;
     }
 
-    // Estimate style from underlying original image
-    const style = this.repairEngine.estimateStyle(this.sourceCtx, ocrRegion);
-
-    const isTamil = /[\u0B80-\u0BFF]/.test(ocrRegion.text);
-    const fontFamily = isTamil ? 'Noto Sans Tamil' : style.fontFamily;
-
-    // Calculate exact font size so replacement glyphs match exact visual height
-    const exactFontSize = this.estimateExactFontSize(
-      ocrRegion.text,
-      ocrRegion.height,
-      fontFamily,
-      style.fontWeight
-    );
-
-    const textAlign = this.estimateAlignment(ocrRegion, this.imageWidth);
+    // Deep pixel analysis of original image text region
+    const styleProfile = this.styleAnalyzer
+      ? this.styleAnalyzer.analyzeTextRegion(this.sourceCtx, ocrRegion)
+      : this.repairEngine.estimateStyle(this.sourceCtx, ocrRegion);
 
     const textObj = {
       id: `text-${ocrRegion.id}`,
       text: ocrRegion.text,
-      x: ocrRegion.x,
-      y: ocrRegion.y,
-      width: ocrRegion.width,
-      height: ocrRegion.height,
-      rotation: 0,
-      fontFamily: fontFamily,
-      fontSize: exactFontSize,
-      fontWeight: style.fontWeight,
-      fontStyle: 'normal',
-      fillColor: style.textColor,
-      opacity: 1.0,
-      letterSpacing: 0,
-      lineHeight: 1.15,
-      textAlign: textAlign,
+      x: styleProfile.box.x,
+      y: styleProfile.box.y,
+      width: styleProfile.box.width,
+      height: styleProfile.box.height,
+      rotation: styleProfile.rotation || 0,
+      scaleX: styleProfile.scaleX || 1.0,
+      scaleY: styleProfile.scaleY || 1.0,
+      fontFamily: styleProfile.fontFamily || 'Inter',
+      fontSize: styleProfile.fontSize || 32,
+      fontWeight: styleProfile.fontWeight || 'bold',
+      fontStyle: styleProfile.fontStyle || 'normal',
+      fillColor: styleProfile.fillColor || styleProfile.textColor || '#ffffff',
+      opacity: styleProfile.opacity !== undefined ? styleProfile.opacity : 1.0,
+      letterSpacing: styleProfile.letterSpacing || 0,
+      lineHeight: styleProfile.lineHeight || 1.15,
+      textAlign: styleProfile.textAlign || 'center',
+      stroke: styleProfile.stroke || null,
+      shadow: styleProfile.shadow || null,
       repairBackground: true, // Erases original text!
       repairMethod: 'auto',
       repairPadding: 4,
       originalBox: { ...ocrRegion },
+      originalStyleProfile: JSON.parse(JSON.stringify(styleProfile)),
+      matchOriginalStyle: true,
       isOCR: true,
       visible: true
     };
 
+    this.fitObjectToText(textObj);
     this.textObjects.push(textObj);
     this.selectObject(textObj.id);
     this.invalidateBackground();

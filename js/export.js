@@ -60,7 +60,18 @@ class ExportEngine {
       ctx.save();
       ctx.translate(obj.x + obj.width / 2, obj.y + obj.height / 2);
       ctx.rotate((obj.rotation || 0) * Math.PI / 180);
+      if (obj.scaleX || obj.scaleY) {
+        ctx.scale(obj.scaleX || 1, obj.scaleY || 1);
+      }
       ctx.globalAlpha = obj.opacity !== undefined ? obj.opacity : 1.0;
+
+      // Apply shadow if present
+      if (obj.shadow) {
+        ctx.shadowColor = obj.shadow.color || 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = obj.shadow.blur || 4;
+        ctx.shadowOffsetX = obj.shadow.offsetX || 2;
+        ctx.shadowOffsetY = obj.shadow.offsetY || 2;
+      }
 
       const lines = (obj.text || '').split('\n');
       const fontSize = obj.fontSize || 32;
@@ -82,10 +93,26 @@ class ExportEngine {
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        const lineY = startY + i * lineHeightPx;
+
+        // Render stroke / outline if present
+        if (obj.stroke && obj.stroke.width > 0) {
+          ctx.save();
+          ctx.strokeStyle = obj.stroke.color || '#000000';
+          ctx.lineWidth = obj.stroke.width * 2;
+          ctx.lineJoin = 'round';
+          if (obj.letterSpacing && obj.letterSpacing !== 0) {
+            this.renderStrokeTextWithLetterSpacing(ctx, line, drawX, lineY, obj.letterSpacing, obj.textAlign);
+          } else {
+            ctx.strokeText(line, drawX, lineY);
+          }
+          ctx.restore();
+        }
+
         if (obj.letterSpacing && obj.letterSpacing !== 0) {
-          this.renderTextWithLetterSpacing(ctx, line, drawX, startY + i * lineHeightPx, obj.letterSpacing, obj.textAlign);
+          this.renderTextWithLetterSpacing(ctx, line, drawX, lineY, obj.letterSpacing, obj.textAlign);
         } else {
-          ctx.fillText(line, drawX, startY + i * lineHeightPx);
+          ctx.fillText(line, drawX, lineY);
         }
       }
 
@@ -107,6 +134,23 @@ class ExportEngine {
     }
 
     return exportCanvas;
+  }
+
+  renderStrokeTextWithLetterSpacing(ctx, text, x, y, letterSpacing, align) {
+    if (!text) return;
+    const chars = Array.from(text);
+    const totalSpacing = (chars.length - 1) * letterSpacing;
+    const baseWidth = ctx.measureText(text).width;
+    const fullWidth = baseWidth + totalSpacing;
+
+    let curX = x;
+    if (align === 'center') curX = x - fullWidth / 2;
+    else if (align === 'right') curX = x - fullWidth;
+
+    for (let i = 0; i < chars.length; i++) {
+      ctx.strokeText(chars[i], curX, y);
+      curX += ctx.measureText(chars[i]).width + letterSpacing;
+    }
   }
 
   renderTextWithLetterSpacing(ctx, text, x, y, letterSpacing, align) {
