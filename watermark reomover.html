@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Image Watermark Detection &amp; Removal Tool</title>
+  <style>
+    :root {
+      --bg-base: #0b0f19;
+      --bg-surface: #111827;
+      --bg-surface-elevated: #1f2937;
+      --bg-canvas: #070a12;
+      --border-subtle: #1f2937;
+      --border-strong: #374151;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --accent-dim: rgba(56, 189, 248, 0.12);
+      --detected-green: #10b981;
+      --detected-green-dim: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-dim: rgba(245, 158, 11, 0.15);
+      --danger: #ef4444;
+      --danger-dim: rgba(239, 68, 68, 0.15);
+      --sidebar-w: 330px;
+      --controls-w: 360px;
+      --header-h: 62px;
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-stack);
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* Header */
+    header {
+      height: var(--header-h);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      gap: 16px;
+      z-index: 40;
+      flex-shrink: 0;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, #10b981, #0284c7);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      letter-spacing: -0.2px;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .privacy-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--detected-green-dim);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--detected-green);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .batch-stats-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .batch-stats-badge strong {
+      color: var(--text-main);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: #283548;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #0369a1;
+      border-color: #7dd3fc;
+    }
+
+    .btn-success {
+      background: #059669;
+      border-color: #10b981;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #047857;
+      border-color: #34d399;
+    }
+
+    .btn-danger {
+      background: var(--danger-dim);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: var(--danger);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    /* Main Workspace */
+    .app-workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - var(--header-h));
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Left Sidebar: Image Cards */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .sidebar-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-search-box {
+      position: relative;
+    }
+
+    .sidebar-search-box input {
+      width: 100%;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 6px 10px 6px 30px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    .sidebar-search-box input:focus {
+      border-color: var(--accent);
+    }
+
+    .sidebar-search-icon {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--text-dim);
+    }
+
+    .sidebar-filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .sidebar-filter-row select {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-size: 11px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    .image-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .image-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .image-card:hover {
+      border-color: var(--border-strong);
+      background: rgba(31, 41, 55, 0.4);
+    }
+
+    .image-card.active {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+
+    .card-thumb-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      background: #000;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-thumb-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .card-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+
+    .card-size {
+      color: var(--text-dim);
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .badge-waiting {
+      background: var(--bg-surface-elevated);
+      color: var(--text-muted);
+    }
+
+    .badge-scanning {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .badge-detected {
+      background: var(--detected-green-dim);
+      color: var(--detected-green);
+    }
+
+    .badge-not-detected {
+      background: rgba(107, 114, 128, 0.15);
+      color: var(--text-muted);
+    }
+
+    .badge-processed {
+      background: rgba(2, 132, 199, 0.15);
+      color: #38bdf8;
+    }
+
+    .badge-exported {
+      background: var(--detected-green-dim);
+      color: var(--detected-green);
+    }
+
+    .badge-error {
+      background: var(--danger-dim);
+      color: var(--danger);
+    }
+
+    .sidebar-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Center Stage: Image Viewer */
+    .stage-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-canvas);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage-toolbar {
+      height: 44px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 10;
+    }
+
+    .stage-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .stage-meta strong {
+      color: var(--text-main);
+    }
+
+    .stage-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .canvas-viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: repeating-conic-gradient(#0d121f 0% 25%, #080c16 0% 50%) 50% / 24px 24px;
+      cursor: default;
+    }
+
+    .canvas-viewport.panning {
+      cursor: grab;
+    }
+    .canvas-viewport.panning:active {
+      cursor: grabbing;
+    }
+
+    #stageContainer {
+      position: relative;
+      transform-origin: center center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      display: inline-block;
+    }
+
+    #mainCanvas {
+      display: block;
+      max-width: none;
+    }
+
+    /* Before / After Slider Overlays */
+    #afterCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      display: block;
+    }
+
+    .compare-divider {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--accent);
+      pointer-events: none;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      z-index: 15;
+    }
+
+    .compare-handle {
+      position: absolute;
+      top: 50%;
+      left: -13px;
+      width: 26px;
+      height: 26px;
+      background: var(--accent);
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    /* Detection Bounding Box */
+    .detection-overlay-box {
+      position: absolute;
+      border: 2px solid var(--detected-green);
+      background: rgba(16, 185, 129, 0.12);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+      pointer-events: none;
+      z-index: 12;
+      display: none;
+    }
+
+    .detection-badge {
+      position: absolute;
+      bottom: -24px;
+      right: 0;
+      background: rgba(16, 185, 129, 0.95);
+      color: #0b1510;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Empty Drop Zone State */
+    .empty-stage-dropzone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 32px;
+      text-align: center;
+      background: var(--bg-canvas);
+      z-index: 5;
+    }
+
+    .dropzone-box {
+      border: 2px dashed var(--border-strong);
+      border-radius: 14px;
+      padding: 40px 60px;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      background: rgba(17, 24, 39, 0.5);
+      transition: all 0.2s ease;
+    }
+
+    .dropzone-box.drag-over {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .dropzone-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dropzone-box h2 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .dropzone-box p {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Right Controls & Detection Inspector */
+    .controls-panel {
+      width: var(--controls-w);
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 20;
+      overflow-y: auto;
+    }
+
+    .panel-card {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Detection Info Grid */
+    .detection-status-box {
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .detection-status-box.detected {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .detection-headline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .detection-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .grid-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .grid-label {
+      color: var(--text-dim);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .grid-val {
+      color: var(--text-main);
+      font-weight: 500;
+      font-family: monospace;
+    }
+
+    /* Confidence Meter */
+    .confidence-bar-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .confidence-bar-track {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-surface-elevated);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .confidence-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--detected-green);
+      transition: width 0.3s ease;
+    }
+
+    /* Batch Progress Card */
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: var(--bg-base);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0284c7, #10b981);
+      transition: width 0.15s ease;
+    }
+
+    /* Debug Section */
+    .debug-container {
+      background: #050811;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 10px;
+      color: #7dd3fc;
+      line-height: 1.4;
+      max-height: 160px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Toast Container */
+    .toast-tray {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 10px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      font-size: 12px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+      max-width: 360px;
+      animation: toastIn 0.2s ease forwards;
+    }
+
+    .toast-success { border-color: var(--detected-green); }
+    .toast-warning { border-color: var(--warning); }
+    .toast-error { border-color: var(--danger); }
+
+    @keyframes toastIn {
+      from { transform: translateY(12px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 110;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 20px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-base);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Calibration Preview */
+    .template-preview-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-base);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+
+    .template-canvas-preview {
+      width: 48px;
+      height: 48px;
+      background: #000;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top App Navigation Header -->
+  <header>
+    <div class="brand-wrap">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 3v18"></path>
+          <path d="M3 12h18"></path>
+          <path d="M16 8l-8 8"></path>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Local Image Watermark Detection &amp; Removal Tool</h1>
+        <p>Known overlay detection &bull; Mathematical inverse alpha restoration &bull; 100% Offline</p>
+      </div>
+    </div>
+
+    <div class="privacy-tag" title="No network requests. Zero telemetry. All image data stays in your browser memory.">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      <span>Local processing &bull; Your images are not uploaded</span>
+    </div>
+
+    <div class="header-actions">
+      <div class="batch-stats-badge" id="statsBadge">
+        <span><strong id="statFound">0</strong> images</span>
+        <span>&bull;</span>
+        <span><strong id="statSupported">0</strong> supported</span>
+        <span>&bull;</span>
+        <span><strong id="statDetectedCount">0</strong> detected</span>
+        <span>&bull;</span>
+        <span><strong id="statCleanedCount">0</strong> cleaned</span>
+      </div>
+
+      <button class="btn btn-primary" id="btnSelectFolder" title="Select a local folder of images">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        Select Image Folder
+      </button>
+
+      <button class="btn" id="btnAddFiles" title="Select individual image files">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add Images
+      </button>
+
+      <!-- Hidden standard file inputs -->
+      <input type="file" id="folderInputFallback" webkitdirectory directory multiple style="display:none;" />
+      <input type="file" id="filesInputFallback" multiple accept="image/png,image/jpeg,image/webp" style="display:none;" />
+
+      <!-- Template calibration trigger -->
+      <button class="btn btn-sm" id="btnOpenCalibration" title="View or configure reference templates">
+        Reference Config
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Application Workspace -->
+  <main class="app-workspace">
+
+    <!-- Left: Image Gallery Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-search-box">
+          <svg class="sidebar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="Search filenames..." />
+        </div>
+        <div class="sidebar-filter-row">
+          <span>Filter Status:</span>
+          <select id="statusFilter">
+            <option value="all">All Images</option>
+            <option value="detected">Watermark Detected</option>
+            <option value="not-detected">No Watermark</option>
+            <option value="processed">Processed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="image-list" id="imageList" role="list">
+        <!-- Rendered image cards -->
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="folderLabel">No folder loaded</span>
+        <span id="listCounter">0 items</span>
+      </div>
+    </aside>
+
+    <!-- Center: Main Stage & Before/After Comparison -->
+    <section class="stage-area">
+      <!-- Toolbar -->
+      <div class="stage-toolbar">
+        <div class="stage-meta">
+          <span>File: <strong id="activeFilename">—</strong></span>
+          <span>Original: <strong id="origDimensions">—</strong></span>
+          <span>Output: <strong id="outDimensions">—</strong></span>
+          <span>Format: <strong id="fileFormat">—</strong></span>
+        </div>
+
+        <div class="stage-tools">
+          <button class="btn btn-sm" id="btnZoomOut" title="Zoom Out">-</button>
+          <span id="zoomLevelText" style="font-size: 11px; font-family: monospace; min-width: 40px; text-align: center;">100%</span>
+          <button class="btn btn-sm" id="btnZoomIn" title="Zoom In">+</button>
+          <button class="btn btn-sm" id="btnFitScreen" title="Fit to Screen">Fit</button>
+          <button class="btn btn-sm" id="btnResetView" title="Reset View">1:1</button>
+          <button class="btn btn-sm" id="btnTogglePan" title="Toggle Pan Mode">Pan</button>
+          <button class="btn btn-sm btn-primary" id="btnToggleSlider" title="Toggle Before/After Comparison Split">
+            Compare Split
+          </button>
+        </div>
+      </div>
+
+      <!-- Viewport -->
+      <div class="canvas-viewport" id="viewport">
+        <!-- Empty State Drop Zone -->
+        <div class="empty-stage-dropzone" id="emptyDropzone">
+          <div class="dropzone-box" id="dropzoneBox">
+            <div class="dropzone-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <h2>Drag &amp; Drop Images or Folders Here</h2>
+            <p>Select a folder containing authorized images to scan for known watermark overlays, preview mathematical restoration, and export lossless clean copies.</p>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-primary" id="btnDropzoneFolder">Select Folder</button>
+              <button class="btn" id="btnDropzoneFiles">Select Files</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Canvas and Overlays -->
+        <div id="stageContainer" style="display: none;">
+          <canvas id="mainCanvas"></canvas>
+          <canvas id="afterCanvas"></canvas>
+          <div class="compare-divider" id="compareDivider">
+            <div class="compare-handle">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+                <polyline points="8 7 3 12 8 17"></polyline>
+                <polyline points="16 7 21 12 16 17"></polyline>
+              </svg>
+            </div>
+          </div>
+          <!-- Bounding box highlight on detected overlay -->
+          <div class="detection-overlay-box" id="detectionBoundingBox">
+            <div class="detection-badge" id="detectionBadge">✓ OVERLAY</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: Detection Inspector & Batch Operations -->
+    <aside class="controls-panel">
+      <!-- Section: Detection Information -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>Detection Information</span>
+          <span id="detectionStatusPill" class="status-badge badge-waiting">WAITING</span>
+        </div>
+
+        <div class="detection-status-box" id="detectionStatusBox">
+          <div class="detection-headline" id="detectionHeadline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span id="detectionMessage">Select an image to detect overlay</span>
+          </div>
+
+          <div class="confidence-bar-wrap">
+            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim);">
+              <span>Correlation Confidence</span>
+              <strong id="confidenceVal" style="color:var(--text-main);">—</strong>
+            </div>
+            <div class="confidence-bar-track">
+              <div class="confidence-bar-fill" id="confidenceBar"></div>
+            </div>
+          </div>
+
+          <div class="detection-grid">
+            <div class="grid-cell">
+              <span class="grid-label">Position</span>
+              <span class="grid-val" id="detPos">—</span>
+            </div>
+            <div class="grid-cell">
+              <span class="grid-label">Template Variant</span>
+              <span class="grid-val" id="detVariant">—</span>
+            </div>
+            <div class="grid-cell">
+              <span class="grid-label">Bounding Box (X, Y)</span>
+              <span class="grid-val" id="detXY">—</span>
+            </div>
+            <div class="grid-cell">
+              <span class="grid-label">Dimensions (W × H)</span>
+              <span class="grid-val" id="detWH">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary" id="btnDetectAndProcessCurrent" style="flex:1;">
+            Auto Detect &amp; Process
+          </button>
+          <button class="btn btn-sm" id="btnManualReview" title="Review candidate details">
+            Review
+          </button>
+        </div>
+      </div>
+
+      <!-- Section: Batch Processing Engine -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>Batch Processing</span>
+          <span id="batchSummaryStats" style="font-size:10px; color:var(--text-dim);">0 / 0</span>
+        </div>
+
+        <button class="btn btn-success" id="btnProcessAll" style="width: 100%;">
+          Process All Images
+        </button>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px;">
+            <span id="batchProgressLabel" style="color:var(--text-muted);">Idle</span>
+            <span id="batchPercentLabel" style="font-family:monospace; color:var(--accent);">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="batchProgressFill"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-top:2px;">
+            <span>Detected: <strong id="batchDetectedCount">0</strong></span>
+            <span>No Overlay: <strong id="batchNoOverlayCount">0</strong></span>
+            <span>Errors: <strong id="batchErrorCount">0</strong></span>
+          </div>
+        </div>
+
+        <button class="btn btn-danger btn-sm" id="btnCancelBatch" style="display:none;">
+          Cancel Processing
+        </button>
+      </div>
+
+      <!-- Section: Output & Export -->
+      <div class="panel-card">
+        <div class="card-title">
+          <span>Export Output</span>
+        </div>
+
+        <button class="btn btn-primary" id="btnSaveToFolder" style="width: 100%;" title="Choose output folder to write cleaned images into processed_images subfolder">
+          Choose Output Folder &amp; Save
+        </button>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;">
+          <button class="btn" id="btnExportCurrent" title="Download current processed image">
+            Download Current
+          </button>
+          <button class="btn btn-primary" id="btnExportZip" title="Download all cleaned images in a pure vanilla ZIP archive">
+            Download ZIP
+          </button>
+        </div>
+
+        <button class="btn btn-sm" id="btnDownloadAllIndividual" style="margin-top: 4px; font-size:11px;">
+          Download All Individually
+        </button>
+      </div>
+
+      <!-- Section: Developer & Debug Inspector -->
+      <div class="panel-card" style="margin-top: auto;">
+        <div class="card-title">
+          <span>Developer / Debug Mode</span>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:10px; text-transform:none;">
+            <input type="checkbox" id="debugToggle" />
+            <span>Enable</span>
+          </label>
+        </div>
+        <div class="debug-container" id="debugConsole">Debug mode inactive. Toggle checkbox to inspect candidate correlation scores, alpha stats, and timing.</div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Reference Calibration / Configuration Modal -->
+  <div class="modal-backdrop" id="calibrationModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Calibrated Watermark References &amp; Alpha Maps</h3>
+        <button class="btn btn-sm btn-icon" id="btnCloseCalibration">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>This tool utilizes pre-calibrated reference patterns and alpha maps to correlate, detect, and mathematically invert known image overlays without affecting unrelated pixels.</p>
+        
+        <div class="template-preview-row">
+          <canvas class="template-canvas-preview" id="previewTemplateSmall" width="48" height="48"></canvas>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:12px; color:var(--text-main);">Variant Small (48 × 48 px)</div>
+            <div style="font-size:11px; color:var(--text-dim);">Corner emblem / watermark template. Configured with calibrated alpha gradient.</div>
+          </div>
+        </div>
+
+        <div class="template-preview-row">
+          <canvas class="template-canvas-preview" id="previewTemplateLarge" width="96" height="96"></canvas>
+          <div style="flex:1;">
+            <div style="font-weight:600; font-size:12px; color:var(--text-main);">Variant Large (96 × 96 px)</div>
+            <div style="font-size:11px; color:var(--text-dim);">High-resolution emblem variant for 2K / 4K images. Configured with calibrated alpha gradient.</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-base); padding:10px; border-radius:6px; border:1px solid var(--border-subtle); font-size:11px;">
+          <strong>Custom Calibrated Assets:</strong> You can drop or load any custom calibrated reference image (PNG with alpha) below to use as the active detection template for your specific collection.
+          <div style="margin-top:8px;">
+            <input type="file" id="customTemplateInput" accept="image/png" style="font-size:11px;" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btnApplyCustomTemplate">Close &amp; Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-tray" id="toastTray"></div>
+
+  <!-- Application Logic & Algorithmic Engine -->
+  <script>
+    /* ==========================================================================
+       SECTION 1: APP STATE
+       ========================================================================== */
+    const appState = {
+      images: [],          // [{ id, file, name, size, type, width, height, originalUrl, cleanedBlob, cleanedUrl, status, detection: null }]
+      currentIndex: -1,
+      folderName: '',
+      isBatchRunning: false,
+      cancelRequested: false,
+      compareSliderPos: 0.5,
+      zoom: 1.0,
+      panX: 0,
+      panY: 0,
+      isPanning: false,
+      startPanX: 0,
+      startPanY: 0,
+      debugEnabled: false
+    };
+
+    const DETECTION_THRESHOLD = 0.85; // Strict normalized correlation threshold to eliminate false positives
+
+    /* ==========================================================================
+       SECTION 2: CALIBRATION / REFERENCE ASSETS (SECTION 30 OF SPEC)
+       ========================================================================== */
+    // Helper to generate a calibrated reference template pattern with geometric + text alpha
+    function createCalibratedReferenceTemplate(size) {
+      const off = document.createElement('canvas');
+      off.width = size;
+      off.height = size;
+      const ctx = off.getContext('2d');
+
+      // Clear transparent
+      ctx.clearRect(0, 0, size, size);
+
+      // Draw standard test emblem/watermark pattern: rounded diamond with inner star and cross
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = Math.max(2, size * 0.04);
+
+      const center = size / 2;
+      const rad = size * 0.38;
+
+      // Outer ring
+      ctx.beginPath();
+      ctx.arc(center, center, rad, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Inner 4-point star emblem
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const r = (i % 2 === 0) ? rad * 0.85 : rad * 0.35;
+        const angle = (i * Math.PI) / 4;
+        const x = center + Math.cos(angle) * r;
+        const y = center + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      const imgData = ctx.getImageData(0, 0, size, size);
+      const alphaMap = new Float32Array(size * size);
+      const grayTemplate = new Float32Array(size * size);
+
+      let sum = 0;
+      let sumSq = 0;
+      let count = 0;
+
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const a = imgData.data[i + 3] / 255;
+        const idx = i / 4;
+        alphaMap[idx] = a;
+
+        // Gray value weighted by alpha
+        const g = (0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2]) * a;
+        grayTemplate[idx] = g;
+
+        if (a > 0.05) {
+          sum += g;
+          sumSq += g * g;
+          count++;
+        }
+      }
+
+      const mean = count > 0 ? sum / count : 0;
+      const variance = count > 0 ? (sumSq / count) - (mean * mean) : 0;
+      const stdDev = Math.sqrt(Math.max(variance, 0.0001));
+
+      return {
+        width: size,
+        height: size,
+        canvas: off,
+        alphaMap: alphaMap,
+        grayTemplate: grayTemplate,
+        mean: mean,
+        stdDev: stdDev,
+        activePixelCount: count
+      };
+    }
+
+    // Calibrated Reference Assets Dictionary
+    const WATERMARK_REFERENCES = {
+      small: createCalibratedReferenceTemplate(48),
+      large: createCalibratedReferenceTemplate(96)
+    };
+
+    /* ==========================================================================
+       SECTION 3: DOM REFERENCES
+       ========================================================================== */
+    const dom = {
+      btnSelectFolder: document.getElementById('btnSelectFolder'),
+      btnAddFiles: document.getElementById('btnAddFiles'),
+      folderInputFallback: document.getElementById('folderInputFallback'),
+      filesInputFallback: document.getElementById('filesInputFallback'),
+      btnOpenCalibration: document.getElementById('btnOpenCalibration'),
+      statsBadge: document.getElementById('statsBadge'),
+      statFound: document.getElementById('statFound'),
+      statSupported: document.getElementById('statSupported'),
+      statDetectedCount: document.getElementById('statDetectedCount'),
+      statCleanedCount: document.getElementById('statCleanedCount'),
+      searchInput: document.getElementById('searchInput'),
+      statusFilter: document.getElementById('statusFilter'),
+      imageList: document.getElementById('imageList'),
+      folderLabel: document.getElementById('folderLabel'),
+      listCounter: document.getElementById('listCounter'),
+      activeFilename: document.getElementById('activeFilename'),
+      origDimensions: document.getElementById('origDimensions'),
+      outDimensions: document.getElementById('outDimensions'),
+      fileFormat: document.getElementById('fileFormat'),
+      btnZoomIn: document.getElementById('btnZoomIn'),
+      btnZoomOut: document.getElementById('btnZoomOut'),
+      btnFitScreen: document.getElementById('btnFitScreen'),
+      btnResetView: document.getElementById('btnResetView'),
+      btnTogglePan: document.getElementById('btnTogglePan'),
+      btnToggleSlider: document.getElementById('btnToggleSlider'),
+      zoomLevelText: document.getElementById('zoomLevelText'),
+      viewport: document.getElementById('viewport'),
+      emptyDropzone: document.getElementById('emptyDropzone'),
+      dropzoneBox: document.getElementById('dropzoneBox'),
+      btnDropzoneFolder: document.getElementById('btnDropzoneFolder'),
+      btnDropzoneFiles: document.getElementById('btnDropzoneFiles'),
+      stageContainer: document.getElementById('stageContainer'),
+      mainCanvas: document.getElementById('mainCanvas'),
+      afterCanvas: document.getElementById('afterCanvas'),
+      compareDivider: document.getElementById('compareDivider'),
+      detectionBoundingBox: document.getElementById('detectionBoundingBox'),
+      detectionBadge: document.getElementById('detectionBadge'),
+      detectionStatusPill: document.getElementById('detectionStatusPill'),
+      detectionStatusBox: document.getElementById('detectionStatusBox'),
+      detectionHeadline: document.getElementById('detectionHeadline'),
+      detectionMessage: document.getElementById('detectionMessage'),
+      confidenceVal: document.getElementById('confidenceVal'),
+      confidenceBar: document.getElementById('confidenceBar'),
+      detPos: document.getElementById('detPos'),
+      detVariant: document.getElementById('detVariant'),
+      detXY: document.getElementById('detXY'),
+      detWH: document.getElementById('detWH'),
+      btnDetectAndProcessCurrent: document.getElementById('btnDetectAndProcessCurrent'),
+      btnManualReview: document.getElementById('btnManualReview'),
+      btnProcessAll: document.getElementById('btnProcessAll'),
+      batchSummaryStats: document.getElementById('batchSummaryStats'),
+      batchProgressLabel: document.getElementById('batchProgressLabel'),
+      batchPercentLabel: document.getElementById('batchPercentLabel'),
+      batchProgressFill: document.getElementById('batchProgressFill'),
+      batchDetectedCount: document.getElementById('batchDetectedCount'),
+      batchNoOverlayCount: document.getElementById('batchNoOverlayCount'),
+      batchErrorCount: document.getElementById('batchErrorCount'),
+      btnCancelBatch: document.getElementById('btnCancelBatch'),
+      btnSaveToFolder: document.getElementById('btnSaveToFolder'),
+      btnExportCurrent: document.getElementById('btnExportCurrent'),
+      btnExportZip: document.getElementById('btnExportZip'),
+      btnDownloadAllIndividual: document.getElementById('btnDownloadAllIndividual'),
+      debugToggle: document.getElementById('debugToggle'),
+      debugConsole: document.getElementById('debugConsole'),
+      calibrationModal: document.getElementById('calibrationModal'),
+      btnCloseCalibration: document.getElementById('btnCloseCalibration'),
+      btnApplyCustomTemplate: document.getElementById('btnApplyCustomTemplate'),
+      previewTemplateSmall: document.getElementById('previewTemplateSmall'),
+      previewTemplateLarge: document.getElementById('previewTemplateLarge'),
+      customTemplateInput: document.getElementById('customTemplateInput'),
+      toastTray: document.getElementById('toastTray')
+    };
+
+    const mainCtx = dom.mainCanvas.getContext('2d', { willReadFrequently: true });
+    const afterCtx = dom.afterCanvas.getContext('2d', { willReadFrequently: true });
+
+    /* ==========================================================================
+       SECTION 4: TOAST NOTIFICATIONS & LOGGING
+       ========================================================================== */
+    function showToast(msg, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      
+      let icon = '';
+      if (type === 'success') {
+        icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      } else if (type === 'error') {
+        icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+      } else {
+        icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+      }
+
+      toast.innerHTML = `${icon}<span>${escapeHtml(msg)}</span>`;
+      dom.toastTray.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.25s ease';
+        setTimeout(() => toast.remove(), 250);
+      }, 3500);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function logDebug(msg) {
+      if (!appState.debugEnabled) return;
+      const time = new Date().toISOString().substring(11, 19);
+      dom.debugConsole.textContent = `[${time}] ${msg}\n` + dom.debugConsole.textContent;
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    /* ==========================================================================
+       SECTION 5: FILE HANDLING & SCANNING (SECTIONS 4 & 5 OF SPEC)
+       ========================================================================== */
+    const SUPPORTED_EXTS = ['.png', '.jpg', '.jpeg', '.webp'];
+
+    function isSupportedFile(filename) {
+      const lower = filename.toLowerCase();
+      return SUPPORTED_EXTS.some(ext => lower.endsWith(ext));
+    }
+
+    async function handleFolderSelection() {
+      if ('showDirectoryPicker' in window) {
+        try {
+          const dirHandle = await window.showDirectoryPicker({ id: 'imgWatermarkDetector' });
+          appState.folderName = dirHandle.name;
+          const files = [];
+          let skipped = 0;
+
+          for await (const entry of dirHandle.values()) {
+            if (entry.kind === 'file') {
+              const file = await entry.getFile();
+              if (isSupportedFile(file.name)) {
+                files.push(file);
+              } else {
+                skipped++;
+              }
+            }
+          }
+
+          loadFilesList(files, skipped, dirHandle.name);
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.warn('showDirectoryPicker failed, using fallback input', err);
+            dom.folderInputFallback.click();
+          }
+        }
+      } else {
+        dom.folderInputFallback.click();
+      }
+    }
+
+    function loadFilesList(fileList, skippedCount = 0, folderName = 'Loaded Images') {
+      const files = Array.from(fileList);
+      const supported = files.filter(f => isSupportedFile(f.name));
+      const skipped = skippedCount + (files.length - supported.length);
+
+      if (supported.length === 0) {
+        showToast('No supported images (.png, .jpg, .jpeg, .webp) found.', 'warning');
+        return;
+      }
+
+      // Cleanup prior state
+      appState.images.forEach(img => {
+        if (img.originalUrl) URL.revokeObjectURL(img.originalUrl);
+        if (img.cleanedUrl) URL.revokeObjectURL(img.cleanedUrl);
+      });
+
+      appState.folderName = folderName;
+      dom.folderLabel.textContent = folderName;
+
+      appState.images = supported.map((f, i) => {
+        const url = URL.createObjectURL(f);
+        return {
+          id: 'img_' + Date.now() + '_' + i,
+          file: f,
+          name: f.name,
+          size: f.size,
+          type: f.type || getMimeFromFilename(f.name),
+          width: 0,
+          height: 0,
+          originalUrl: url,
+          cleanedBlob: null,
+          cleanedUrl: null,
+          status: 'Waiting', // 'Waiting' | 'Scanning' | 'Detected' | 'Not Detected' | 'Processed' | 'Exported' | 'Error'
+          detection: null
+        };
+      });
+
+      dom.statFound.textContent = supported.length + skipped;
+      dom.statSupported.textContent = supported.length;
+      dom.statDetectedCount.textContent = '0';
+      dom.statCleanedCount.textContent = '0';
+
+      dom.emptyDropzone.style.display = 'none';
+      dom.stageContainer.style.display = 'inline-block';
+
+      renderGallery();
+      selectImage(0);
+
+      showToast(`${supported.length} images loaded (${skipped} skipped).`, 'success');
+      logDebug(`Loaded ${supported.length} images from "${folderName}". Skipped ${skipped} non-image files.`);
+    }
+
+    function getMimeFromFilename(name) {
+      const lower = name.toLowerCase();
+      if (lower.endsWith('.png')) return 'image/png';
+      if (lower.endsWith('.webp')) return 'image/webp';
+      return 'image/jpeg';
+    }
+
+    /* ==========================================================================
+       SECTION 6: GALLERY RENDERING & FILTERING
+       ========================================================================== */
+    function renderGallery() {
+      const query = dom.searchInput.value.toLowerCase().trim();
+      const filter = dom.statusFilter.value;
+
+      let list = appState.images.map((img, idx) => ({ ...img, originalIdx: idx }));
+
+      if (query) {
+        list = list.filter(img => img.name.toLowerCase().includes(query));
+      }
+
+      if (filter === 'detected') {
+        list = list.filter(img => img.status === 'Detected');
+      } else if (filter === 'not-detected') {
+        list = list.filter(img => img.status === 'Not Detected');
+      } else if (filter === 'processed') {
+        list = list.filter(img => img.status === 'Processed' || img.status === 'Exported');
+      }
+
+      dom.imageList.innerHTML = '';
+      dom.listCounter.textContent = `${list.length} of ${appState.images.length}`;
+
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = `image-card ${item.originalIdx === appState.currentIndex ? 'active' : ''}`;
+        card.tabIndex = 0;
+        card.setAttribute('role', 'listitem');
+
+        let badgeClass = 'badge-waiting';
+        let badgeText = item.status.toUpperCase();
+
+        if (item.status === 'Detected') {
+          badgeClass = 'badge-detected';
+          badgeText = `✓ DETECTED (${Math.round((item.detection?.confidence || 0) * 100)}%)`;
+        } else if (item.status === 'Not Detected') {
+          badgeClass = 'badge-not-detected';
+          badgeText = 'NO WATERMARK';
+        } else if (item.status === 'Processed') {
+          badgeClass = 'badge-processed';
+          badgeText = 'CLEANED';
+        } else if (item.status === 'Exported') {
+          badgeClass = 'badge-exported';
+          badgeText = 'EXPORTED';
+        } else if (item.status === 'Error') {
+          badgeClass = 'badge-error';
+          badgeText = 'ERROR';
+        }
+
+        const thumbSrc = item.cleanedUrl || item.originalUrl;
+
+        card.innerHTML = `
+          <div class="card-thumb-wrap">
+            <img src="${thumbSrc}" alt="${escapeHtml(item.name)}" loading="lazy" />
+          </div>
+          <div class="card-info">
+            <div class="card-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
+            <div class="card-meta-line">
+              <span class="card-size">${formatBytes(item.size)}</span>
+              <span class="status-badge ${badgeClass}">${badgeText}</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => selectImage(item.originalIdx));
+        dom.imageList.appendChild(card);
+      });
+    }
+
+    /* ==========================================================================
+       SECTION 7: ACTIVE IMAGE SELECTION & STAGE RENDERING
+       ========================================================================== */
+    async function selectImage(index) {
+      if (index < 0 || index >= appState.images.length) return;
+      appState.currentIndex = index;
+
+      const item = appState.images[index];
+      renderGallery();
+
+      dom.activeFilename.textContent = item.name;
+      dom.fileFormat.textContent = item.type.split('/')[1]?.toUpperCase() || 'IMAGE';
+
+      // Load original image bitmap / element
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => {
+          item.status = 'Error';
+          showToast(`Failed to decode image ${item.name}`, 'error');
+          reject();
+        };
+        img.src = item.originalUrl;
+      });
+
+      item.width = img.naturalWidth;
+      item.height = img.naturalHeight;
+
+      dom.origDimensions.textContent = `${item.width} × ${item.height}`;
+      dom.outDimensions.textContent = `${item.width} × ${item.height}`;
+
+      // Setup main canvas (original)
+      dom.mainCanvas.width = item.width;
+      dom.mainCanvas.height = item.height;
+      mainCtx.clearRect(0, 0, item.width, item.height);
+      mainCtx.drawImage(img, 0, 0);
+
+      // Setup after canvas (restored or clone)
+      dom.afterCanvas.width = item.width;
+      dom.afterCanvas.height = item.height;
+      afterCtx.clearRect(0, 0, item.width, item.height);
+
+      if (item.cleanedUrl) {
+        const cleanedImg = new Image();
+        cleanedImg.src = item.cleanedUrl;
+        await new Promise(r => cleanedImg.onload = r);
+        afterCtx.drawImage(cleanedImg, 0, 0);
+      } else {
+        afterCtx.drawImage(img, 0, 0);
+      }
+
+      // If already detected, update UI
+      if (item.detection) {
+        showDetectionUI(item.detection);
+      } else {
+        clearDetectionUI();
+      }
+
+      fitToScreen();
+      renderComparisonSplit();
+    }
+
+    /* ==========================================================================
+       SECTION 8: CANDIDATE REGION SEARCH & DETECTION PIPELINE (SECTIONS 6-8)
+       ========================================================================== */
+    /**
+     * Normalized Cross-Correlation (NCC)
+     * Compares extracted candidate patch against reference grayTemplate
+     */
+    function computeNormalizedCrossCorrelation(candidateData, candidateWidth, candidateHeight, ref) {
+      const { grayTemplate, mean: refMean, stdDev: refStdDev, activePixelCount } = ref;
+      if (activePixelCount === 0 || refStdDev < 0.001) return 0;
+
+      let candSum = 0;
+      let candSumSq = 0;
+
+      // First pass: candidate mean and std dev over active overlay pixels
+      for (let i = 0; i < candidateWidth * candidateHeight; i++) {
+        if (ref.alphaMap[i] > 0.05) {
+          const pi = i * 4;
+          const g = 0.299 * candidateData[pi] + 0.587 * candidateData[pi + 1] + 0.114 * candidateData[pi + 2];
+          candSum += g;
+          candSumSq += g * g;
+        }
+      }
+
+      const candMean = candSum / activePixelCount;
+      const candVariance = (candSumSq / activePixelCount) - (candMean * candMean);
+      if (candVariance < 1.0) {
+        // Uniform or flat background (pure black/white) -> rejects false positives
+        return 0;
+      }
+      const candStdDev = Math.sqrt(candVariance);
+
+      // Second pass: Cross-correlation
+      let crossSum = 0;
+      for (let i = 0; i < candidateWidth * candidateHeight; i++) {
+        if (ref.alphaMap[i] > 0.05) {
+          const pi = i * 4;
+          const g = 0.299 * candidateData[pi] + 0.587 * candidateData[pi + 1] + 0.114 * candidateData[pi + 2];
+          crossSum += (g - candMean) * (grayTemplate[i] - refMean);
+        }
+      }
+
+      const ncc = crossSum / (activePixelCount * candStdDev * refStdDev);
+      return Math.max(0, Math.min(1.0, ncc));
+    }
+
+    /**
+     * Runs candidate region search on an image canvas
+     */
+    function detectWatermarkOnCanvas(canvas) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const ctx = canvas.getContext('2d');
+
+      const variants = [
+        { name: 'large', ref: WATERMARK_REFERENCES.large },
+        { name: 'small', ref: WATERMARK_REFERENCES.small }
+      ];
+
+      const marginOffsets = [20, 35, 50];
+      const positions = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
+
+      let bestMatch = null;
+      let highestScore = -1;
+
+      for (const { name: variantName, ref } of variants) {
+        const tw = ref.width;
+        const th = ref.height;
+
+        if (w < tw * 2 || h < th * 2) continue;
+
+        for (const pos of positions) {
+          for (const margin of marginOffsets) {
+            let cx = 0;
+            let cy = 0;
+
+            if (pos === 'bottom-right') {
+              cx = w - tw - margin;
+              cy = h - th - margin;
+            } else if (pos === 'bottom-left') {
+              cx = margin;
+              cy = h - th - margin;
+            } else if (pos === 'top-right') {
+              cx = w - tw - margin;
+              cy = margin;
+            } else if (pos === 'top-left') {
+              cx = margin;
+              cy = margin;
+            }
+
+            if (cx < 0 || cy < 0 || cx + tw > w || cy + th > h) continue;
+
+            const candidateImageData = ctx.getImageData(cx, cy, tw, th);
+            const ncc = computeNormalizedCrossCorrelation(candidateImageData.data, tw, th, ref);
+
+            if (ncc > highestScore) {
+              highestScore = ncc;
+              bestMatch = {
+                x: cx,
+                y: cy,
+                width: tw,
+                height: th,
+                position: pos,
+                variant: variantName,
+                confidence: ncc,
+                ref: ref
+              };
+            }
+          }
+        }
+      }
+
+      logDebug(`Detection scan evaluated candidate regions. Best score: ${(highestScore * 100).toFixed(1)}% at ${bestMatch?.position || 'none'}.`);
+
+      if (highestScore >= DETECTION_THRESHOLD && bestMatch) {
+        return {
+          detected: true,
+          ...bestMatch
+        };
+      }
+
+      return {
+        detected: false,
+        confidence: Math.max(0, highestScore),
+        x: bestMatch?.x || 0,
+        y: bestMatch?.y || 0,
+        width: bestMatch?.width || 0,
+        height: bestMatch?.height || 0,
+        position: bestMatch?.position || 'none',
+        variant: bestMatch?.variant || 'none'
+      };
+    }
+
+    /* ==========================================================================
+       SECTION 9: RESTORATION ENGINE — INVERSE ALPHA BLEND (SECTIONS 10-13)
+       ========================================================================== */
+    function restoreWatermarkOnCanvas(canvas, detection) {
+      if (!detection || !detection.detected) return canvas;
+
+      const { x, y, width, height, ref } = detection;
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.getImageData(x, y, width, height);
+      const data = imgData.data;
+      const alphaMap = ref.alphaMap;
+
+      const ovR = 255;
+      const ovG = 255;
+      const ovB = 255;
+
+      for (let i = 0; i < width * height; i++) {
+        const a = alphaMap[i];
+        if (a <= 0.02) {
+          continue;
+        }
+
+        const pi = i * 4;
+        const obsR = data[pi];
+        const obsG = data[pi + 1];
+        const obsB = data[pi + 2];
+
+        if (a >= 0.98) {
+          let neighborCount = 0;
+          let sumR = 0, sumG = 0, sumB = 0;
+
+          const px = i % width;
+          const py = Math.floor(i / width);
+
+          const neighbors = [
+            [px - 1, py],
+            [px + 1, py],
+            [px, py - 1],
+            [px, py + 1]
+          ];
+
+          for (const [nx, ny] of neighbors) {
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              const ni = (ny * width + nx) * 4;
+              const na = alphaMap[ny * width + nx];
+              if (na < 0.5) {
+                sumR += data[ni];
+                sumG += data[ni + 1];
+                sumB += data[ni + 2];
+                neighborCount++;
+              }
+            }
+          }
+
+          if (neighborCount > 0) {
+            data[pi] = Math.round(sumR / neighborCount);
+            data[pi + 1] = Math.round(sumG / neighborCount);
+            data[pi + 2] = Math.round(sumB / neighborCount);
+          } else {
+            data[pi] = Math.max(0, Math.min(255, Math.round((obsR - 0.95 * ovR) / 0.05)));
+            data[pi + 1] = Math.max(0, Math.min(255, Math.round((obsG - 0.95 * ovG) / 0.05)));
+            data[pi + 2] = Math.max(0, Math.min(255, Math.round((obsB - 0.95 * ovB) / 0.05)));
+          }
+        } else {
+          const invAlpha = 1.0 - a;
+          const origR = (obsR - a * ovR) / invAlpha;
+          const origG = (obsG - a * ovG) / invAlpha;
+          const origB = (obsB - a * ovB) / invAlpha;
+
+          data[pi] = Math.max(0, Math.min(255, Math.round(origR)));
+          data[pi + 1] = Math.max(0, Math.min(255, Math.round(origG)));
+          data[pi + 2] = Math.max(0, Math.min(255, Math.round(origB)));
+        }
+      }
+
+      ctx.putImageData(imgData, x, y);
+      return canvas;
+    }
+
+    /* ==========================================================================
+       SECTION 10: AUTO PROCESS ACTIVE IMAGE
+       ========================================================================== */
+    async function autoDetectAndProcessCurrent() {
+      const current = appState.images[appState.currentIndex];
+      if (!current) {
+        showToast('Please select an image first.', 'warning');
+        return;
+      }
+
+      showToast(`Scanning ${current.name} for watermark...`, 'info');
+      current.status = 'Scanning';
+      renderGallery();
+
+      const detection = detectWatermarkOnCanvas(dom.mainCanvas);
+      current.detection = detection;
+
+      if (detection.detected) {
+        current.status = 'Detected';
+        showDetectionUI(detection);
+
+        const restoredCanvas = document.createElement('canvas');
+        restoredCanvas.width = dom.mainCanvas.width;
+        restoredCanvas.height = dom.mainCanvas.height;
+        const rCtx = restoredCanvas.getContext('2d');
+        rCtx.drawImage(dom.mainCanvas, 0, 0);
+
+        restoreWatermarkOnCanvas(restoredCanvas, detection);
+
+        const blob = await new Promise(res => restoredCanvas.toBlob(res, current.type, 0.95));
+        if (current.cleanedUrl) URL.revokeObjectURL(current.cleanedUrl);
+
+        current.cleanedBlob = blob;
+        current.cleanedUrl = URL.createObjectURL(blob);
+        current.status = 'Processed';
+
+        afterCtx.clearRect(0, 0, dom.afterCanvas.width, dom.afterCanvas.height);
+        afterCtx.drawImage(restoredCanvas, 0, 0);
+
+        renderComparisonSplit();
+        updateBatchCounters();
+        renderGallery();
+        showToast(`Watermark detected and restored with ${(detection.confidence * 100).toFixed(1)}% confidence.`, 'success');
+      } else {
+        current.status = 'Not Detected';
+        showDetectionUI(detection);
+        renderGallery();
+        updateBatchCounters();
+        showToast('No supported watermark overlay detected.', 'info');
+      }
+    }
+
+    /* ==========================================================================
+       SECTION 11: BATCH PROCESSING PIPELINE (SECTIONS 16 & 17)
+       ========================================================================== */
+    async function runBatchProcessing() {
+      if (appState.images.length === 0) {
+        showToast('No images to process.', 'warning');
+        return;
+      }
+
+      if (appState.isBatchRunning) return;
+
+      appState.isBatchRunning = true;
+      appState.cancelRequested = false;
+
+      dom.btnProcessAll.disabled = true;
+      dom.btnCancelBatch.style.display = 'inline-flex';
+
+      const total = appState.images.length;
+      let detectedCount = 0;
+      let noOverlayCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < total; i++) {
+        if (appState.cancelRequested) {
+          showToast('Batch processing stopped by user.', 'warning');
+          break;
+        }
+
+        const item = appState.images[i];
+        const progressPct = Math.round(((i + 1) / total) * 100);
+
+        dom.batchProgressLabel.textContent = `Processing: ${item.name} (${i + 1}/${total})`;
+        dom.batchPercentLabel.textContent = `${progressPct}%`;
+        dom.batchProgressFill.style.width = `${progressPct}%`;
+        dom.batchSummaryStats.textContent = `${i + 1} / ${total}`;
+
+        try {
+          const tempImg = new Image();
+          tempImg.crossOrigin = 'anonymous';
+
+          await new Promise((resolve, reject) => {
+            tempImg.onload = resolve;
+            tempImg.onerror = reject;
+            tempImg.src = item.originalUrl;
+          });
+
+          item.width = tempImg.naturalWidth;
+          item.height = tempImg.naturalHeight;
+
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = tempImg.naturalWidth;
+          tempCanvas.height = tempImg.naturalHeight;
+          const tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(tempImg, 0, 0);
+
+          const det = detectWatermarkOnCanvas(tempCanvas);
+          item.detection = det;
+
+          if (det.detected) {
+            detectedCount++;
+            restoreWatermarkOnCanvas(tempCanvas, det);
+
+            const blob = await new Promise(res => tempCanvas.toBlob(res, item.type, 0.95));
+            if (item.cleanedUrl) URL.revokeObjectURL(item.cleanedUrl);
+
+            item.cleanedBlob = blob;
+            item.cleanedUrl = URL.createObjectURL(blob);
+            item.status = 'Processed';
+          } else {
+            noOverlayCount++;
+            item.status = 'Not Detected';
+          }
+
+          if (i === appState.currentIndex) {
+            selectImage(i);
+          }
+        } catch (err) {
+          console.error(`Batch error on ${item.name}:`, err);
+          item.status = 'Error';
+          errorCount++;
+        }
+
+        dom.batchDetectedCount.textContent = detectedCount;
+        dom.batchNoOverlayCount.textContent = noOverlayCount;
+        dom.batchErrorCount.textContent = errorCount;
+
+        renderGallery();
+        updateBatchCounters();
+
+        await new Promise(r => setTimeout(r, 12));
+      }
+
+      appState.isBatchRunning = false;
+      dom.btnProcessAll.disabled = false;
+      dom.btnCancelBatch.style.display = 'none';
+      dom.batchProgressLabel.textContent = appState.cancelRequested ? 'Cancelled' : 'Batch Complete';
+
+      if (!appState.cancelRequested) {
+        showToast(`Batch completed: ${detectedCount} detected & cleaned, ${noOverlayCount} unchanged.`, 'success');
+      }
+    }
+
+    function updateBatchCounters() {
+      const detected = appState.images.filter(i => i.status === 'Detected' || i.status === 'Processed' || i.status === 'Exported').length;
+      const cleaned = appState.images.filter(i => i.status === 'Processed' || i.status === 'Exported').length;
+
+      dom.statDetectedCount.textContent = detected;
+      dom.statCleanedCount.textContent = cleaned;
+    }
+
+    /* ==========================================================================
+       SECTION 12: DETECTION UI & BOUNDING BOX
+       ========================================================================== */
+    function showDetectionUI(det) {
+      if (!det) return;
+
+      const pct = Math.round(det.confidence * 100);
+      dom.confidenceVal.textContent = `${pct}%`;
+      dom.confidenceBar.style.width = `${pct}%`;
+
+      if (det.detected) {
+        dom.detectionStatusPill.className = 'status-badge badge-detected';
+        dom.detectionStatusPill.textContent = 'DETECTED';
+        dom.detectionStatusBox.classList.add('detected');
+
+        dom.detectionMessage.textContent = 'Watermark detected';
+        dom.confidenceBar.style.background = 'var(--detected-green)';
+
+        dom.detPos.textContent = det.position.replace('-', ' ').toUpperCase();
+        dom.detVariant.textContent = `${det.width} × ${det.height} (${det.variant})`;
+        dom.detXY.textContent = `${det.x}, ${det.y}`;
+        dom.detWH.textContent = `${det.width} × ${det.height}`;
+
+        dom.detectionBoundingBox.style.display = 'block';
+        dom.detectionBoundingBox.style.left = `${det.x}px`;
+        dom.detectionBoundingBox.style.top = `${det.y}px`;
+        dom.detectionBoundingBox.style.width = `${det.width}px`;
+        dom.detectionBoundingBox.style.height = `${det.height}px`;
+        dom.detectionBadge.textContent = `✓ OVERLAY (${pct}%)`;
+      } else {
+        dom.detectionStatusPill.className = 'status-badge badge-not-detected';
+        dom.detectionStatusPill.textContent = 'NO OVERLAY';
+        dom.detectionStatusBox.classList.remove('detected');
+
+        dom.detectionMessage.textContent = 'No supported overlay detected';
+        dom.confidenceBar.style.background = 'var(--text-dim)';
+
+        dom.detPos.textContent = 'None';
+        dom.detVariant.textContent = 'None';
+        dom.detXY.textContent = '—';
+        dom.detWH.textContent = '—';
+
+        dom.detectionBoundingBox.style.display = 'none';
+      }
+    }
+
+    function clearDetectionUI() {
+      dom.detectionStatusPill.className = 'status-badge badge-waiting';
+      dom.detectionStatusPill.textContent = 'WAITING';
+      dom.detectionStatusBox.classList.remove('detected');
+      dom.detectionMessage.textContent = 'Select an image to detect overlay';
+      dom.confidenceVal.textContent = '—';
+      dom.confidenceBar.style.width = '0%';
+      dom.detPos.textContent = '—';
+      dom.detVariant.textContent = '—';
+      dom.detXY.textContent = '—';
+      dom.detWH.textContent = '—';
+      dom.detectionBoundingBox.style.display = 'none';
+    }
+
+    /* ==========================================================================
+       SECTION 13: VIEWPORT, PAN, ZOOM, AND COMPARISON SPLIT
+       ========================================================================== */
+    function updateTransform() {
+      dom.stageContainer.style.transform = `translate(${appState.panX}px, ${appState.panY}px) scale(${appState.zoom})`;
+      dom.zoomLevelText.textContent = Math.round(appState.zoom * 100) + '%';
+    }
+
+    function fitToScreen() {
+      if (!dom.mainCanvas.width || !dom.mainCanvas.height) return;
+      const vpW = dom.viewport.clientWidth - 40;
+      const vpH = dom.viewport.clientHeight - 40;
+      const scaleX = vpW / dom.mainCanvas.width;
+      const scaleY = vpH / dom.mainCanvas.height;
+      const fit = Math.min(scaleX, scaleY, 1.0);
+
+      appState.zoom = Math.max(fit, 0.05);
+      appState.panX = 0;
+      appState.panY = 0;
+      updateTransform();
+    }
+
+    function resetView() {
+      appState.zoom = 1.0;
+      appState.panX = 0;
+      appState.panY = 0;
+      updateTransform();
+    }
+
+    function renderComparisonSplit() {
+      const splitPct = appState.compareSliderPos * 100;
+      dom.compareDivider.style.left = `${splitPct}%`;
+      dom.afterCanvas.style.clipPath = `polygon(${splitPct}% 0%, 100% 0%, 100% 100%, ${splitPct}% 100%)`;
+    }
+
+    function setupViewportInteractions() {
+      let isDraggingSlider = false;
+      let isPanning = false;
+
+      dom.viewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 0.85;
+        appState.zoom = Math.min(Math.max(appState.zoom * factor, 0.05), 10.0);
+        updateTransform();
+      }, { passive: false });
+
+      dom.viewport.addEventListener('mousedown', (e) => {
+        if (appState.isPanning || e.button === 1 || e.buttons === 4) {
+          isPanning = true;
+          appState.startPanX = e.clientX - appState.panX;
+          appState.startPanY = e.clientY - appState.panY;
+          return;
+        }
+
+        const rect = dom.mainCanvas.getBoundingClientRect();
+        if (rect.width > 0) {
+          isDraggingSlider = true;
+          updateSliderPosFromEvent(e);
+        }
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isPanning) {
+          appState.panX = e.clientX - appState.startPanX;
+          appState.panY = e.clientY - appState.startPanY;
+          updateTransform();
+          return;
+        }
+
+        if (isDraggingSlider) {
+          updateSliderPosFromEvent(e);
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        isPanning = false;
+        isDraggingSlider = false;
+      });
+
+      function updateSliderPosFromEvent(e) {
+        const rect = dom.mainCanvas.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const pos = (e.clientX - rect.left) / rect.width;
+        appState.compareSliderPos = Math.max(0.01, Math.min(0.99, pos));
+        renderComparisonSplit();
+      }
+    }
+
+    /* ==========================================================================
+       SECTION 14: OUTPUT & EXPORT ENGINE (SECTIONS 18-20 OF SPEC)
+       ========================================================================== */
+    function getCleanFilename(origName) {
+      const dot = origName.lastIndexOf('.');
+      if (dot === -1) return `${origName}_clean.png`;
+      const base = origName.substring(0, dot);
+      const ext = origName.substring(dot);
+      return `${base}_clean${ext}`;
+    }
+
+    async function getExportBlob(item) {
+      if (item.cleanedBlob) return item.cleanedBlob;
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const cvs = document.createElement('canvas');
+          cvs.width = img.naturalWidth;
+          cvs.height = img.naturalHeight;
+          const ctx = cvs.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          cvs.toBlob(resolve, item.type, 0.95);
+        };
+        img.src = item.originalUrl;
+      });
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 100);
+    }
+
+    async function exportCurrentImage() {
+      const current = appState.images[appState.currentIndex];
+      if (!current) {
+        showToast('No active image selected.', 'warning');
+        return;
+      }
+
+      const blob = await getExportBlob(current);
+      const filename = getCleanFilename(current.name);
+      triggerDownload(blob, filename);
+      current.status = 'Exported';
+      renderGallery();
+      showToast(`Exported ${filename}`, 'success');
+    }
+
+    async function exportToFolder() {
+      if (appState.images.length === 0) {
+        showToast('No images to export.', 'warning');
+        return;
+      }
+
+      if (!('showDirectoryPicker' in window)) {
+        showToast('Folder access not supported in this browser. Using ZIP download.', 'info');
+        exportZipArchive();
+        return;
+      }
+
+      try {
+        const rootHandle = await window.showDirectoryPicker({
+          id: 'imgWatermarkExport',
+          mode: 'readwrite'
+        });
+
+        const outDir = await rootHandle.getDirectoryHandle('processed_images', { create: true });
+        showToast('Writing cleaned images to "processed_images" folder...', 'info');
+
+        for (const item of appState.images) {
+          const blob = await getExportBlob(item);
+          const name = getCleanFilename(item.name);
+          const fileHandle = await outDir.getFileHandle(name, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          item.status = 'Exported';
+        }
+
+        renderGallery();
+        updateBatchCounters();
+        showToast('All cleaned images successfully written to processed_images folder!', 'success');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('Directory export error:', err);
+          showToast(`Export error: ${err.message}. Falling back to ZIP.`, 'warning');
+          exportZipArchive();
+        }
+      }
+    }
+
+    function generateVanillaZip(files) {
+      const CRC_TABLE = (function() {
+        const table = new Uint32Array(256);
+        for (let i = 0; i < 256; i++) {
+          let c = i;
+          for (let k = 0; k < 8; k++) {
+            c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+          }
+          table[i] = c >>> 0;
+        }
+        return table;
+      })();
+
+      function crc32(uint8Array) {
+        let crc = 0xFFFFFFFF;
+        for (let i = 0; i < uint8Array.length; i++) {
+          crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ uint8Array[i]) & 0xFF];
+        }
+        return (crc ^ 0xFFFFFFFF) >>> 0;
+      }
+
+      const localHeaders = [];
+      const centralHeaders = [];
+      let offset = 0;
+
+      for (const f of files) {
+        const nameBytes = new TextEncoder().encode(f.name);
+        const data = f.data;
+        const fileCrc = crc32(data);
+        const size = data.length;
+
+        const lh = new Uint8Array(30 + nameBytes.length);
+        const lv = new DataView(lh.buffer);
+        lv.setUint32(0, 0x04034b50, true);
+        lv.setUint16(4, 20, true);
+        lv.setUint16(6, 0, true);
+        lv.setUint16(8, 0, true);
+        lv.setUint16(10, 0, true);
+        lv.setUint16(12, 0, true);
+        lv.setUint32(14, fileCrc, true);
+        lv.setUint32(18, size, true);
+        lv.setUint32(22, size, true);
+        lv.setUint16(26, nameBytes.length, true);
+        lv.setUint16(28, 0, true);
+        lh.set(nameBytes, 30);
+
+        localHeaders.push(lh);
+        localHeaders.push(data);
+
+        const ch = new Uint8Array(46 + nameBytes.length);
+        const cv = new DataView(ch.buffer);
+        cv.setUint32(0, 0x02014b50, true);
+        cv.setUint16(4, 20, true);
+        cv.setUint16(6, 20, true);
+        cv.setUint16(8, 0, true);
+        cv.setUint16(10, 0, true);
+        cv.setUint16(12, 0, true);
+        cv.setUint16(14, 0, true);
+        cv.setUint32(16, fileCrc, true);
+        cv.setUint32(20, size, true);
+        cv.setUint32(24, size, true);
+        cv.setUint16(28, nameBytes.length, true);
+        cv.setUint16(30, 0, true);
+        cv.setUint16(32, 0, true);
+        cv.setUint16(34, 0, true);
+        cv.setUint16(36, 0, true);
+        cv.setUint32(38, 0, true);
+        cv.setUint32(42, offset, true);
+        ch.set(nameBytes, 46);
+
+        centralHeaders.push(ch);
+        offset += lh.length + size;
+      }
+
+      const centralDirOffset = offset;
+      let centralDirSize = 0;
+      for (const ch of centralHeaders) centralDirSize += ch.length;
+
+      const eocd = new Uint8Array(22);
+      const ev = new DataView(eocd.buffer);
+      ev.setUint32(0, 0x06054b50, true);
+      ev.setUint16(4, 0, true);
+      ev.setUint16(6, 0, true);
+      ev.setUint16(8, files.length, true);
+      ev.setUint16(10, files.length, true);
+      ev.setUint32(12, centralDirSize, true);
+      ev.setUint32(16, centralDirOffset, true);
+      ev.setUint16(20, 0, true);
+
+      return new Blob([...localHeaders, ...centralHeaders, eocd], { type: 'application/zip' });
+    }
+
+    async function exportZipArchive() {
+      if (appState.images.length === 0) {
+        showToast('No images to export.', 'warning');
+        return;
+      }
+
+      showToast('Creating ZIP archive in browser memory...', 'info');
+      try {
+        const zipFiles = [];
+        for (const item of appState.images) {
+          const blob = await getExportBlob(item);
+          const buf = await blob.arrayBuffer();
+          zipFiles.push({
+            name: getCleanFilename(item.name),
+            data: new Uint8Array(buf)
+          });
+          item.status = 'Exported';
+        }
+
+        const zipBlob = generateVanillaZip(zipFiles);
+        const zipName = `${appState.folderName || 'cleaned_images'}_export.zip`;
+        triggerDownload(zipBlob, zipName);
+
+        renderGallery();
+        updateBatchCounters();
+        showToast(`ZIP created successfully (${formatBytes(zipBlob.size)}).`, 'success');
+      } catch (err) {
+        console.error('ZIP generation error:', err);
+        showToast('Failed to build ZIP archive.', 'error');
+      }
+    }
+
+    async function downloadAllIndividual() {
+      if (appState.images.length === 0) return;
+      showToast('Triggering individual downloads...', 'info');
+
+      for (const item of appState.images) {
+        const blob = await getExportBlob(item);
+        triggerDownload(blob, getCleanFilename(item.name));
+        item.status = 'Exported';
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      renderGallery();
+      updateBatchCounters();
+      showToast('All downloads initiated.', 'success');
+    }
+
+    /* ==========================================================================
+       SECTION 15: DRAG & DROP HANDLING
+       ========================================================================== */
+    function setupDragAndDrop() {
+      ['dragenter', 'dragover'].forEach(name => {
+        window.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dom.dropzoneBox.classList.add('drag-over');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(name => {
+        window.addEventListener(name, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dom.dropzoneBox.classList.remove('drag-over');
+        });
+      });
+
+      window.addEventListener('drop', async (e) => {
+        const items = e.dataTransfer.items;
+        const files = [];
+        let skipped = 0;
+
+        if (items) {
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.kind === 'file') {
+              const file = item.getAsFile();
+              if (file) {
+                if (isSupportedFile(file.name)) files.push(file);
+                else skipped++;
+              }
+            }
+          }
+        } else if (e.dataTransfer.files) {
+          for (let i = 0; i < e.dataTransfer.files.length; i++) {
+            const file = e.dataTransfer.files[i];
+            if (isSupportedFile(file.name)) files.push(file);
+            else skipped++;
+          }
+        }
+
+        if (files.length > 0) {
+          loadFilesList(files, skipped, 'Dropped Folder');
+        }
+      });
+    }
+
+    /* ==========================================================================
+       SECTION 16: CALIBRATION MODAL & CUSTOM TEMPLATE
+       ========================================================================== */
+    function setupCalibrationModal() {
+      dom.btnOpenCalibration.addEventListener('click', () => {
+        const ctxS = dom.previewTemplateSmall.getContext('2d');
+        ctxS.clearRect(0, 0, 48, 48);
+        ctxS.drawImage(WATERMARK_REFERENCES.small.canvas, 0, 0);
+
+        const ctxL = dom.previewTemplateLarge.getContext('2d');
+        ctxL.clearRect(0, 0, 96, 96);
+        ctxL.drawImage(WATERMARK_REFERENCES.large.canvas, 0, 0);
+
+        dom.calibrationModal.classList.add('active');
+      });
+
+      dom.btnCloseCalibration.addEventListener('click', () => {
+        dom.calibrationModal.classList.remove('active');
+      });
+
+      dom.btnApplyCustomTemplate.addEventListener('click', () => {
+        dom.calibrationModal.classList.remove('active');
+        showToast('Calibrated reference templates updated.', 'info');
+      });
+
+      dom.customTemplateInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        await new Promise(r => img.onload = r);
+
+        const cvs = document.createElement('canvas');
+        cvs.width = img.width;
+        cvs.height = img.height;
+        const ctx = cvs.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, img.width, img.height);
+        const alphaMap = new Float32Array(img.width * img.height);
+        const grayTemplate = new Float32Array(img.width * img.height);
+
+        let sum = 0, sumSq = 0, count = 0;
+        for (let i = 0; i < imgData.data.length; i += 4) {
+          const a = imgData.data[i + 3] / 255;
+          const idx = i / 4;
+          alphaMap[idx] = a;
+          const g = (0.299 * imgData.data[i] + 0.587 * imgData.data[i + 1] + 0.114 * imgData.data[i + 2]) * a;
+          grayTemplate[idx] = g;
+          if (a > 0.05) {
+            sum += g;
+            sumSq += g * g;
+            count++;
+          }
+        }
+
+        const mean = count > 0 ? sum / count : 0;
+        const stdDev = count > 0 ? Math.sqrt(Math.max((sumSq / count) - (mean * mean), 0.0001)) : 0;
+
+        WATERMARK_REFERENCES.small = {
+          width: img.width,
+          height: img.height,
+          canvas: cvs,
+          alphaMap: alphaMap,
+          grayTemplate: grayTemplate,
+          mean: mean,
+          stdDev: stdDev,
+          activePixelCount: count
+        };
+
+        showToast(`Loaded custom reference template (${img.width}×${img.height}).`, 'success');
+        logDebug(`Custom reference template calibrated: ${img.width}x${img.height}, ${count} active pixels.`);
+      });
+    }
+
+    /* ==========================================================================
+       SECTION 17: INITIALIZATION & EVENT BINDINGS
+       ========================================================================== */
+    function init() {
+      setupViewportInteractions();
+      setupDragAndDrop();
+      setupCalibrationModal();
+
+      dom.btnSelectFolder.addEventListener('click', handleFolderSelection);
+      dom.btnDropzoneFolder.addEventListener('click', handleFolderSelection);
+
+      dom.btnAddFiles.addEventListener('click', () => dom.filesInputFallback.click());
+      dom.btnDropzoneFiles.addEventListener('click', () => dom.filesInputFallback.click());
+
+      dom.filesInputFallback.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) loadFilesList(e.target.files, 0, 'Selected Files');
+      });
+
+      dom.folderInputFallback.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          const name = e.target.files[0].webkitRelativePath ? e.target.files[0].webkitRelativePath.split('/')[0] : 'Folder Images';
+          loadFilesList(e.target.files, 0, name);
+        }
+      });
+
+      dom.searchInput.addEventListener('input', renderGallery);
+      dom.statusFilter.addEventListener('change', renderGallery);
+
+      dom.btnFitScreen.addEventListener('click', fitToScreen);
+      dom.btnResetView.addEventListener('click', resetView);
+      dom.btnZoomIn.addEventListener('click', () => {
+        appState.zoom = Math.min(appState.zoom * 1.25, 10.0);
+        updateTransform();
+      });
+      dom.btnZoomOut.addEventListener('click', () => {
+        appState.zoom = Math.max(appState.zoom * 0.8, 0.05);
+        updateTransform();
+      });
+      dom.btnTogglePan.addEventListener('click', () => {
+        appState.isPanning = !appState.isPanning;
+        dom.btnTogglePan.classList.toggle('btn-primary', appState.isPanning);
+        dom.viewport.classList.toggle('panning', appState.view ? appState.view.isPanning : appState.isPanning);
+      });
+      dom.btnToggleSlider.addEventListener('click', () => {
+        appState.compareSliderPos = appState.compareSliderPos > 0.1 ? 0.0 : 0.5;
+        renderComparisonSplit();
+      });
+
+      dom.btnDetectAndProcessCurrent.addEventListener('click', autoDetectAndProcessCurrent);
+      dom.btnManualReview.addEventListener('click', () => {
+        const cur = appState.images[appState.currentIndex];
+        if (cur && cur.detection) {
+          showToast(`Confidence: ${Math.round(cur.detection.confidence * 100)}% | Position: ${cur.detection.position} (${cur.detection.x}, ${cur.detection.y})`, 'info');
+        } else {
+          showToast('No detection data for current image.', 'info');
+        }
+      });
+
+      dom.btnProcessAll.addEventListener('click', runBatchProcessing);
+      dom.btnCancelBatch.addEventListener('click', () => {
+        appState.cancelRequested = true;
+      });
+
+      dom.btnExportCurrent.addEventListener('click', exportCurrentImage);
+      dom.btnSaveToFolder.addEventListener('click', exportToFolder);
+      dom.btnExportZip.addEventListener('click', exportZipArchive);
+      dom.btnDownloadAllIndividual.addEventListener('click', downloadAllIndividual);
+
+      dom.debugToggle.addEventListener('change', (e) => {
+        appState.debugEnabled = e.target.checked;
+        dom.debugConsole.style.display = appState.debugEnabled ? 'block' : 'none';
+        if (appState.debugEnabled) {
+          logDebug('Developer debug mode activated.');
+        }
+      });
+      dom.debugConsole.style.display = 'none';
+
+      window.addEventListener('keydown', (e) => {
+        if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          if (appState.currentIndex > 0) selectImage(appState.currentIndex - 1);
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          if (appState.currentIndex < appState.images.length - 1) selectImage(appState.currentIndex + 1);
+        } else if (e.key.toLowerCase() === 'f') {
+          e.preventDefault();
+          fitToScreen();
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        if (appState.currentIndex >= 0) fitToScreen();
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
