@@ -3,460 +3,645 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Text Customizer - In-Browser Text Detection &amp; Editing</title>
-  <meta name="description" content="Production-ready browser-side image text detection, background restoration, and text customization application.">
+  <title>Image Studio Suite - Image Text Customizer &amp; Watermark Remover</title>
+  <meta name="description" content="All-in-one browser-based image toolkit: Detect and edit text with OCR &amp; inpainting, and remove watermarks locally with zero server uploads.">
 
-  <!-- Google Fonts: Inter & Noto Sans Tamil for pristine typography -->
+  <!-- Google Fonts: Inter & Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Stylesheet -->
-  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root {
+      --bg-base: #060911;
+      --bg-surface: #0f1523;
+      --bg-surface-elevated: #172033;
+      --bg-card: rgba(18, 26, 42, 0.75);
+      --border-subtle: #1e2b45;
+      --border-strong: #2c3e63;
+      --accent-cyan: #06b6d4;
+      --accent-sky: #38bdf8;
+      --accent-indigo: #6366f1;
+      --accent-purple: #a855f7;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.15);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 22px;
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border-subtle);
+      --shadow-hover: 0 20px 40px -12px rgba(6, 182, 212, 0.25), 0 0 0 1px var(--accent-cyan);
+    }
+
+    [data-theme="light"] {
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #f1f5f9;
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --accent-cyan: #0284c7;
+      --accent-sky: #0ea5e9;
+      --accent-indigo: #4f46e5;
+      --accent-purple: #9333ea;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #94a3b8;
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 0 0 1px var(--border-subtle);
+      --shadow-hover: 0 20px 40px -12px rgba(2, 132, 199, 0.2), 0 0 0 1px var(--accent-cyan);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.6;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient background gradient mesh */
+    .bg-mesh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 25%, rgba(99, 102, 241, 0.14) 0%, transparent 50%),
+        radial-gradient(circle at 50% 85%, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(12px);
+      background-color: rgba(6, 9, 17, 0.65);
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .privacy-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--success-glow);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .theme-btn {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent-cyan);
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 60px 24px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      max-width: 820px;
+      margin-bottom: 56px;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent-sky);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    [data-theme="light"] .hero h1 {
+      background: linear-gradient(135deg, #0f172a 30%, #475569 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Tools Showcase Grid */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+      width: 100%;
+      margin-bottom: 60px;
+    }
+
+    .tool-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      box-shadow: var(--shadow-card);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--card-color-1), var(--card-color-2));
+      opacity: 0.8;
+      transition: height 0.3s ease;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--card-color-1);
+    }
+
+    .tool-card:hover::before {
+      height: 6px;
+    }
+
+    .card-text-customizer {
+      --card-color-1: #06b6d4;
+      --card-color-2: #38bdf8;
+    }
+
+    .card-watermark-remover {
+      --card-color-1: #6366f1;
+      --card-color-2: #a855f7;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .card-icon-wrapper {
+      width: 54px;
+      height: 54px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .card-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(6, 182, 212, 0.12);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+    }
+
+    .card-watermark-remover .card-tag {
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--accent-indigo);
+      border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .card-content h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .card-content p {
+      color: var(--text-muted);
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    .features-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .features-list li {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .features-list li svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      color: var(--card-color-1);
+    }
+
+    .card-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-strong);
+      padding: 13px 22px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main);
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .tool-card:hover .card-cta {
+      background: linear-gradient(135deg, var(--card-color-1), var(--card-color-2));
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);
+    }
+
+    /* Benefits Strip */
+    .benefits-strip {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 30px 40px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+    }
+
+    .benefit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .benefit-icon {
+      font-size: 24px;
+      line-height: 1;
+      padding-top: 2px;
+    }
+
+    .benefit-info h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .benefit-info p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    footer {
+      position: relative;
+      z-index: 10;
+      border-top: 1px solid var(--border-subtle);
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-dim);
+      background-color: rgba(6, 9, 17, 0.8);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent-cyan);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      header {
+        padding: 16px 20px;
+      }
+      main {
+        padding: 40px 16px;
+      }
+      .hero h1 {
+        font-size: 34px;
+      }
+      .tools-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+      }
+      .benefits-strip {
+        grid-template-columns: 1fr;
+        padding: 24px;
+        gap: 20px;
+      }
+      footer {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+      }
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Top Header Navigation -->
-  <header class="app-header">
-    <div class="brand-section">
-      <div class="brand-logo">T</div>
-      <div class="brand-info">
-        <h1 data-i18n="appTitle">Image Text Customizer</h1>
-        <div class="privacy-badge">
-          <span>🔒</span>
-          <span data-i18n="privacyBadge">100% Client-Side • Private &amp; Secure</span>
-        </div>
+  <!-- Background Mesh Ambient Layer -->
+  <div class="bg-mesh"></div>
+
+  <!-- Header -->
+  <header>
+    <a href="index.html" class="brand-group">
+      <div class="brand-icon">S</div>
+      <div class="brand-title">Image Studio Suite</div>
+    </a>
+
+    <div class="header-right">
+      <div class="privacy-badge">
+        <span>🔒</span>
+        <span>100% Client-Side Privacy</span>
       </div>
-    </div>
-
-    <div class="header-nav">
-      <button id="navUpload" class="nav-btn" data-i18n="navUpload">Upload</button>
-      <button id="toolSplitPreview" class="nav-btn" data-i18n="splitViewBtn">Split Preview</button>
-      <button id="navExport" class="nav-btn btn-accent" data-i18n="exportBtn">Export Image</button>
-    </div>
-
-    <div class="header-actions">
-      <!-- OCR Language selector -->
-      <select id="ocrLanguage" class="select-dropdown" title="OCR Language">
-        <option value="eng" selected data-i18n="ocrLangEng">English (OCR)</option>
-        <option value="tam" data-i18n="ocrLangTam">Tamil / தமிழ் (OCR)</option>
-        <option value="eng+tam" data-i18n="ocrLangEngTam">English + Tamil</option>
-      </select>
-
-      <!-- UI Language switcher -->
-      <select id="langSelect" class="select-dropdown" title="Interface Language">
-        <option value="en">English</option>
-        <option value="ta">தமிழ்</option>
-      </select>
-
-      <!-- Dark / Light Theme Toggle -->
-      <button id="themeToggle" class="icon-button" title="Toggle Theme">☀️</button>
-
-      <!-- Help Button -->
-      <button id="btnHelp" class="icon-button" title="Help &amp; Shortcuts">?</button>
+      <button id="themeToggle" class="theme-btn" title="Toggle Dark/Light Mode">☀️</button>
     </div>
   </header>
 
-  <!-- SCREEN 1: Large Drag & Drop Upload Area -->
-  <main id="uploadScreen" class="screen-upload">
-    <div class="upload-card">
-      <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;">
-      
-      <div id="dropzone" class="dropzone-box">
-        <div class="dropzone-icon">🖼️</div>
-        <h2 class="dropzone-title" data-i18n="dropzoneTitle">Drag &amp; drop your image here</h2>
-        <p class="dropzone-subtitle" data-i18n="dropzoneSubtitle">Supports PNG, JPG, JPEG, WEBP (Full resolution preserved)</p>
-        <button id="btnChooseImage" class="nav-btn btn-accent" style="padding: 10px 24px; font-size: 15px;" data-i18n="chooseImageBtn">Choose Image</button>
-      </div>
-
-      <!-- Built-in 1-Click Samples for Immediate Testing -->
-      <div class="sample-section">
-        <p class="sample-label" data-i18n="orSample">Or test with a built-in sample image:</p>
-        <div class="sample-badges">
-          <button id="btnSamplePoster" class="sample-chip" data-i18n="samplePoster1">Digital Safety Poster</button>
-          <button id="btnSampleTamil" class="sample-chip" data-i18n="sampleTamil">Tamil Awareness Banner</button>
-          <button id="btnSampleCert" class="sample-chip" data-i18n="sampleCertificate">Achievement Certificate</button>
-        </div>
-      </div>
-    </div>
-  </main>
-
-  <!-- SCREEN 2: Main Editor Workspace -->
-  <main id="editorScreen" class="screen-editor">
-
-    <!-- LEFT TOOLBAR -->
-    <aside class="toolbar-left">
-      <button id="toolSelect" class="tool-button active" title="Select Tool (V)" data-i18n-title="toolSelect">
-        <span>↖</span>
-      </button>
-      <button id="toolAddText" class="tool-button" title="Add Custom Text (T)" data-i18n-title="toolAddText">
-        <span>T+</span>
-      </button>
-      <button id="toolDetectText" class="tool-button" title="Detect Text (OCR)" data-i18n-title="toolDetectText">
-        <span>🔍</span>
-      </button>
-      <button id="toolPan" class="tool-button" title="Pan Canvas (H / Space)" data-i18n-title="toolPan">
-        <span>✋</span>
-      </button>
-      
-      <div class="tool-divider"></div>
-
-      <button id="toolUndo" class="tool-button" title="Undo (Ctrl+Z)" data-i18n-title="toolUndo" disabled>
-        <span>↩</span>
-      </button>
-      <button id="toolRedo" class="tool-button" title="Redo (Ctrl+Y)" data-i18n-title="toolRedo" disabled>
-        <span>↪</span>
-      </button>
-    </aside>
-
-    <!-- CENTER CANVAS WORKSPACE -->
-    <section id="canvasWorkspace" class="canvas-workspace">
-      
-      <!-- Top OCR Status Bar -->
-      <div class="ocr-top-bar">
-        <span class="ocr-status-text" id="ocrStatusText" data-i18n="ocrReady">Ready for text detection</span>
-        <div id="ocrProgressBar" class="ocr-progress-container">
-          <div id="ocrProgressFill" class="ocr-progress-fill"></div>
-        </div>
-      </div>
-
-      <!-- Main Rendering Canvas -->
-      <canvas id="mainCanvas"></canvas>
-
-      <!-- Floating Toolbar near selected text object -->
-      <div id="floatingToolbar" class="floating-toolbar">
-        <button id="floatingEditBtn" class="float-btn" data-i18n="floatingEdit">Edit</button>
-        <button id="floatingDuplicateBtn" class="float-btn" data-i18n="floatingDuplicate">Duplicate</button>
-        <button id="floatingDeleteBtn" class="float-btn btn-delete" data-i18n="floatingDelete">Delete</button>
-      </div>
-
-      <!-- Bottom Floating Viewport Controls (HUD) -->
-      <div class="canvas-hud">
-        <button id="btnZoomOut" class="hud-btn" title="Zoom Out (-)">−</button>
-        <button id="btnZoom100" class="hud-btn" title="100% Zoom">100%</button>
-        <button id="btnZoomIn" class="hud-btn" title="Zoom In (+)">+</button>
-        <button id="btnZoomFit" class="hud-btn" data-i18n="zoomFit">Fit</button>
-        <button id="btnZoom200" class="hud-btn">200%</button>
-        <div class="hud-divider"></div>
-        <button id="btnHoldBefore" class="hud-btn" data-i18n="beforeAfterBtn">Hold for Original</button>
-      </div>
+  <!-- Main Showcase Hub -->
+  <main>
+    <section class="hero">
+      <div class="hero-pill">⚡ Private &bull; Client-Side &bull; No Uploads Required</div>
+      <h1>Intelligent In-Browser Image Editing Suite</h1>
+      <p>Transform your images with precision OCR text customization and high-fidelity watermark removal directly in your browser with zero latency and full privacy.</p>
     </section>
 
-    <!-- RIGHT PANEL: Text Properties, Layers & Adjustments -->
-    <aside class="panel-right">
-      <div class="panel-tabs">
-        <button class="panel-tab-btn active" data-tab="text" data-i18n="tabText">Text Properties</button>
-        <button class="panel-tab-btn" data-tab="layers" data-i18n="tabLayers">Layers</button>
-        <button class="panel-tab-btn" data-tab="image" data-i18n="tabImage">Image</button>
-      </div>
+    <!-- Two Main Tools Grid -->
+    <section class="tools-grid">
 
-      <!-- TAB 1: Text Properties -->
-      <div id="tab-text" class="panel-tab-content active">
-        
-        <div id="noSelectionNotice" class="empty-panel-notice">
-          <span style="font-size: 28px; margin-bottom: 8px;">✏️</span>
-          <span data-i18n="noSelectionMsg">Select a text layer or click text on canvas to edit properties</span>
+      <!-- TOOL 1: Image Text Customizer -->
+      <a href="image text changer.html" class="tool-card card-text-customizer">
+        <div>
+          <div class="card-header">
+            <div class="card-icon-wrapper">📝</div>
+            <span class="card-tag">OCR &amp; Inpainting</span>
+          </div>
+
+          <div class="card-content">
+            <h2>Image Text Customizer</h2>
+            <p>Automatically detect text inside any image, remove original text with seamless background inpainting, and type custom replacement text in English or Tamil.</p>
+
+            <ul class="features-list">
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Tesseract.js OCR text detection (English, Tamil &amp; combined)
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Intelligent background repair &amp; text removal without white boxes
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Font typography, move, resize, rotate &amp; style estimation
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Interactive Before / After split comparison &amp; full-res export
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div id="textPropertyContent" style="display: none;">
-          <!-- Content Input -->
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="textContentLabel">Text Content</span>
-              <div class="btn-group" style="scale: 0.85;">
-                <button type="button" id="propCaseUpper" class="btn-group-item">AA</button>
-                <button type="button" id="propCaseLower" class="btn-group-item">aa</button>
-              </div>
-            </label>
-            <textarea id="propTextContent" class="form-control-text" rows="3" placeholder="Enter custom or Unicode/Tamil text..."></textarea>
+        <div class="card-cta">
+          <span>Open Image Text Customizer</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <!-- TOOL 2: Watermark Remover -->
+      <a href="watermark reomover.html" class="tool-card card-watermark-remover">
+        <div>
+          <div class="card-header">
+            <div class="card-icon-wrapper">✨</div>
+            <span class="card-tag">Erase &amp; Restore</span>
           </div>
 
-          <!-- Typography: Font & Size -->
-          <div class="form-group">
-            <label class="form-label" data-i18n="fontFamilyLabel">Font Family</label>
-            <select id="propFontFamily" class="form-control-select">
-              <option value="Inter">Inter (Sans-serif)</option>
-              <option value="Noto Sans Tamil">Noto Sans Tamil (தமிழ்)</option>
-              <option value="Arial">Arial</option>
-              <option value="Helvetica">Helvetica</option>
-              <option value="Times New Roman">Times New Roman</option>
-              <option value="Georgia">Georgia</option>
-              <option value="Verdana">Verdana</option>
-              <option value="Trebuchet MS">Trebuchet MS</option>
-              <option value="Courier New">Courier New (Monospace)</option>
-            </select>
+          <div class="card-content">
+            <h2>Watermark Remover</h2>
+            <p>Erase watermarks, logos, dates, and unwanted stamps from single images or in bulk with smart texture inpainting and boundary reconstruction.</p>
+
+            <ul class="features-list">
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Automatic watermark detection &amp; manual brush selection
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Advanced multi-pass inpainting with gradient preservation
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Batch image processing with individual queue controls
+              </li>
+              <li>
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                Export individual images or download bulk ZIP archives
+              </li>
+            </ul>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="fontSizeLabel">Font Size</span>
-              <span id="propFontSizeVal" class="slider-val">32px</span>
-            </label>
-            <div class="form-row">
-              <input type="range" id="propFontSize" class="form-slider" min="10" max="180" value="32">
-            </div>
-          </div>
+        <div class="card-cta">
+          <span>Open Watermark Remover</span>
+          <span>→</span>
+        </div>
+      </a>
 
-          <!-- Color & Weight -->
-          <div class="form-group">
-            <label class="form-label" data-i18n="fontColorLabel">Text Color</label>
-            <div class="color-picker-wrapper">
-              <input type="color" id="propFontColor" class="color-input" value="#000000">
-              <input type="text" id="propFontColorHex" class="form-control-text" value="#000000" style="width: 100px;">
-            </div>
-          </div>
+    </section>
 
-          <div class="form-group">
-            <label class="form-label" data-i18n="fontWeightLabel">Font Weight</label>
-            <select id="propFontWeight" class="form-control-select">
-              <option value="normal">Regular (400)</option>
-              <option value="500">Medium (500)</option>
-              <option value="bold">Bold (700)</option>
-              <option value="800">Extra Bold (800)</option>
-            </select>
-          </div>
-
-          <!-- Alignment & Style -->
-          <div class="form-group">
-            <label class="form-label" data-i18n="textAlignLabel">Alignment &amp; Style</label>
-            <div class="form-row" style="gap: 8px;">
-              <div class="btn-group" style="flex: 1;">
-                <button type="button" class="btn-group-item btn-align active" data-align="left">Left</button>
-                <button type="button" class="btn-group-item btn-align" data-align="center">Center</button>
-                <button type="button" class="btn-group-item btn-align" data-align="right">Right</button>
-              </div>
-              <button type="button" id="propItalic" class="nav-btn" style="border: 1px solid var(--border-subtle); padding: 6px 12px;"><i>I</i></button>
-            </div>
-          </div>
-
-          <!-- Spacing & Line Height -->
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="letterSpacingLabel">Letter Spacing</span>
-              <span id="propLetterSpacingVal" class="slider-val">0px</span>
-            </label>
-            <input type="range" id="propLetterSpacing" class="form-slider" min="-5" max="25" value="0">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="lineHeightLabel">Line Height</span>
-              <span id="propLineHeightVal" class="slider-val">1.2</span>
-            </label>
-            <input type="range" id="propLineHeight" class="form-slider" min="0.8" max="2.4" step="0.1" value="1.2">
-          </div>
-
-          <!-- Opacity & Rotation -->
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="opacityLabel">Opacity</span>
-              <span id="propOpacityVal" class="slider-val">100%</span>
-            </label>
-            <input type="range" id="propOpacity" class="form-slider" min="0.1" max="1" step="0.05" value="1">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              <span data-i18n="rotationLabel">Rotation</span>
-              <span id="propRotationVal" class="slider-val">0°</span>
-            </label>
-            <input type="range" id="propRotation" class="form-slider" min="-180" max="180" value="0">
-          </div>
-
-          <!-- ORIGINAL TEXT REMOVAL / BACKGROUND REPAIR ENGINE -->
-          <div class="repair-box">
-            <div class="repair-header">
-              <span>🧹</span>
-              <span data-i18n="bgRepairHeading">Original Text Removal</span>
-            </div>
-
-            <label class="switch-label">
-              <input type="checkbox" id="propRepairBackground" checked>
-              <span data-i18n="bgRepairToggle">Erase original text &amp; reconstruct background</span>
-            </label>
-
-            <div class="form-group" style="margin-bottom: 10px;">
-              <label class="form-label" data-i18n="bgRepairMethod">Repair Method</label>
-              <select id="propRepairMethod" class="form-control-select">
-                <option value="auto" data-i18n="methodAuto">Intelligent Auto (Recommended)</option>
-                <option value="inpaint" data-i18n="methodInpaint">Patch Inpainting (Photo/Texture)</option>
-                <option value="gradient" data-i18n="methodGradient">Gradient Interpolation</option>
-                <option value="solid" data-i18n="methodSolid">Solid Color Sample</option>
-              </select>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">
-                <span data-i18n="bgPaddingLabel">Expansion Margin</span>
-                <span id="propRepairPaddingVal" class="slider-val">4px</span>
-              </label>
-              <input type="range" id="propRepairPadding" class="form-slider" min="1" max="20" value="4">
-            </div>
-          </div>
-
+    <!-- Bottom Benefits Strip -->
+    <div class="benefits-strip">
+      <div class="benefit-item">
+        <div class="benefit-icon">🛡️</div>
+        <div class="benefit-info">
+          <h3>100% Local &amp; Private</h3>
+          <p>Your photos never touch an external server or cloud database. All processing runs locally in browser memory.</p>
         </div>
       </div>
 
-      <!-- TAB 2: Text Layers -->
-      <div id="tab-layers" class="panel-tab-content">
-        <div class="layers-header">
-          <span style="font-size: 13px; font-weight: 600;" data-i18n="layersTitle">Text Layers</span>
-          <button id="btnAddTextFromLayers" class="nav-btn" style="padding: 4px 10px; font-size: 12px;" data-i18n="addTextBtn">+ Add Custom Text</button>
+      <div class="benefit-item">
+        <div class="benefit-icon">📐</div>
+        <div class="benefit-info">
+          <h3>Full Resolution Preserved</h3>
+          <p>Both tools render against full original image dimensions so you never lose sharpness or detail.</p>
         </div>
-        <div id="layersList" class="layers-list"></div>
       </div>
 
-      <!-- TAB 3: Image Adjustments -->
-      <div id="tab-image" class="panel-tab-content">
-        <div class="form-group">
-          <label class="form-label">
-            <span data-i18n="brightnessLabel">Brightness</span>
-            <span id="filterBrightnessVal" class="slider-val">100%</span>
-          </label>
-          <input type="range" id="filterBrightness" class="form-slider" min="50" max="150" value="100">
+      <div class="benefit-item">
+        <div class="benefit-icon">⚡</div>
+        <div class="benefit-info">
+          <h3>Zero Fees or Subscriptions</h3>
+          <p>Free, open, client-side tools powered by HTML5 Canvas, modern CSS, and open-source JavaScript.</p>
         </div>
-
-        <div class="form-group">
-          <label class="form-label">
-            <span data-i18n="contrastLabel">Contrast</span>
-            <span id="filterContrastVal" class="slider-val">100%</span>
-          </label>
-          <input type="range" id="filterContrast" class="form-slider" min="50" max="150" value="100">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">
-            <span data-i18n="saturationLabel">Saturation</span>
-            <span id="filterSaturationVal" class="slider-val">100%</span>
-          </label>
-          <input type="range" id="filterSaturation" class="form-slider" min="0" max="200" value="100">
-        </div>
-
-        <button id="btnResetFilters" class="nav-btn" style="width: 100%; border: 1px solid var(--border-subtle); justify-content: center; margin-top: 14px;" data-i18n="resetFiltersBtn">Reset Adjustments</button>
-      </div>
-    </aside>
-
-  </main>
-
-  <!-- BOTTOM STATUS BAR -->
-  <footer class="app-statusbar">
-    <div class="status-group">
-      <div class="status-item">
-        <span data-i18n="statusDimensions">Dimensions:</span>
-        <span id="statusDim" class="status-val">-</span>
-      </div>
-      <div class="status-item">
-        <span data-i18n="statusSize">Size:</span>
-        <span id="statusSize" class="status-val">-</span>
-      </div>
-      <div class="status-item">
-        <span data-i18n="statusZoom">Zoom:</span>
-        <span id="statusZoom" class="status-val">100%</span>
-      </div>
-      <div class="status-item">
-        <span data-i18n="statusRegions">Text Regions:</span>
-        <span id="statusOCR" class="status-val">0</span>
       </div>
     </div>
-    <div class="status-group">
-      <span style="color: var(--success); font-size: 11px;">● 100% In-Browser Local Processing</span>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      <span>Image Studio Suite &bull; Developed by Vijay Mahes</span>
+    </div>
+    <div class="footer-links">
+      <a href="image text changer.html">Image Text Customizer</a>
+      <a href="watermark reomover.html">Watermark Remover</a>
+      <a href="https://github.com/vijaymahes9080/Image-Text-Customizer" target="_blank" rel="noopener">GitHub Repository</a>
     </div>
   </footer>
 
-  <!-- MODAL: Export Dialog -->
-  <div id="exportModal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 data-i18n="exportDialogTitle">Export Edited Image</h3>
-        <button id="btnExportClose" class="modal-close">✕</button>
-      </div>
+  <script>
+    // Theme toggle handling
+    const themeBtn = document.getElementById('themeToggle');
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('suite_theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
 
-      <div class="form-group">
-        <label class="form-label" data-i18n="formatLabel">Image Format</label>
-        <select id="exportFormat" class="form-control-select">
-          <option value="png" selected>PNG (Lossless High Quality)</option>
-          <option value="jpeg">JPG / JPEG (Standard Compressed)</option>
-        </select>
-      </div>
+    const savedTheme = localStorage.getItem('suite_theme') || 'dark';
+    applyTheme(savedTheme);
 
-      <div id="exportQualityGroup" class="form-group" style="display: none;">
-        <label class="form-label">
-          <span data-i18n="jpgQualityLabel">JPEG Quality</span>
-          <span id="exportQualityVal" class="slider-val">95%</span>
-        </label>
-        <input type="range" id="exportQuality" class="form-slider" min="70" max="100" value="95">
-      </div>
-
-      <div class="form-group">
-        <div style="background-color: var(--bg-surface-elevated); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--text-muted);">
-          <span data-i18n="exportOriginalResNote">Will be rendered at full original resolution:</span>
-          <strong id="exportResNote" style="color: var(--accent); margin-left: 6px;"></strong>
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <button id="btnDownloadFinal" class="nav-btn btn-accent" style="padding: 10px 22px;" data-i18n="downloadBtn">Download File</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Quick In-Place Text Editor -->
-  <div id="quickEditModal" class="quick-edit-modal">
-    <div class="quick-edit-card">
-      <div class="modal-header">
-        <h3 style="font-size: 15px;">Edit Text</h3>
-      </div>
-      <textarea id="quickEditText" class="form-control-text" rows="3" style="font-size: 15px; margin-bottom: 14px;"></textarea>
-      <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <button id="btnQuickCancel" class="nav-btn" data-i18n="floatingCancel">Cancel</button>
-        <button id="btnQuickApply" class="nav-btn btn-accent" data-i18n="floatingApply">Apply</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: Help & Shortcuts Dialog -->
-  <div id="helpModal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 data-i18n="helpTitle">How to use Image Text Customizer</h3>
-        <button id="btnHelpClose" class="modal-close">✕</button>
-      </div>
-      <div style="font-size: 13px; line-height: 1.6; color: var(--text-muted); display: flex; flex-direction: column; gap: 12px;">
-        <p><strong>1. Upload Image:</strong> Drag and drop any image or pick one of the sample posters to test instantly.</p>
-        <p><strong>2. OCR Text Detection:</strong> Text regions are detected automatically in English, Tamil, or both. You can also re-run detection anytime from the toolbar.</p>
-        <p><strong>3. Edit &amp; Customize:</strong> Click any detected text box to select it. The tool erases the original text and restores the background seamlessly while letting you type replacement text.</p>
-        <p><strong>4. Transform:</strong> Drag to move, grab corner handles to resize, and use the top handle to rotate text.</p>
-        <p><strong>5. Keyboard Shortcuts:</strong></p>
-        <ul style="padding-left: 20px;">
-          <li><code>V</code>: Select Tool</li>
-          <li><code>T</code>: Add Custom Text</li>
-          <li><code>H / Space+Drag</code>: Pan Canvas</li>
-          <li><code>Ctrl + Z</code>: Undo</li>
-          <li><code>Ctrl + Y / Ctrl+Shift+Z</code>: Redo</li>
-          <li><code>Delete / Backspace</code>: Delete Selected Text</li>
-        </ul>
-        <p><strong>6. Full Resolution Export:</strong> When downloading, your edits are rendered against the full original resolution of your image!</p>
-      </div>
-      <div class="modal-actions">
-        <button onclick="document.getElementById('helpModal').classList.remove('active')" class="nav-btn btn-accent" data-i18n="helpClose">Got it!</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Notification Container -->
-  <div id="toastContainer" class="toast-container"></div>
-
-  <!-- Tesseract.js Client-Side OCR Library -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-  <!-- Modular Application Scripts -->
-  <script src="js/utils.js"></script>
-  <script src="js/background-repair.js"></script>
-  <script src="js/ocr.js"></script>
-  <script src="js/canvas-editor.js"></script>
-  <script src="js/text-editor.js"></script>
-  <script src="js/history.js"></script>
-  <script src="js/export.js"></script>
-  <script src="js/app.js"></script>
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  </script>
 </body>
 </html>
