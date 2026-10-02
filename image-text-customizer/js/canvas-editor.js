@@ -839,6 +839,46 @@ class CanvasEditor {
     }
   }
 
+  estimateExactFontSize(text, targetHeight, fontFamily, fontWeight) {
+    if (!text || targetHeight <= 0) return Math.max(14, Math.round(targetHeight));
+
+    this.ctx.save();
+    const testSize = 100;
+    this.ctx.font = `${fontWeight || 'bold'} ${testSize}px "${fontFamily || 'Inter'}", sans-serif`;
+    const metrics = this.ctx.measureText(text);
+    this.ctx.restore();
+
+    let glyphHeight = testSize * 0.72; // default fallback
+    if (metrics.actualBoundingBoxAscent !== undefined && metrics.actualBoundingBoxDescent !== undefined) {
+      const h = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+      if (h > 8) glyphHeight = h;
+    }
+
+    // Exact scale factor to match original visual pixel height
+    const exactFontSize = Math.round((targetHeight / glyphHeight) * testSize);
+    return Math.max(12, Math.min(260, exactFontSize));
+  }
+
+  estimateAlignment(ocrRegion, imgWidth) {
+    const boxCenterX = ocrRegion.x + ocrRegion.width / 2;
+    const imgCenterX = imgWidth / 2;
+    const centerOffset = Math.abs(boxCenterX - imgCenterX);
+
+    // If within 8% of center, it's center-aligned
+    if (centerOffset < imgWidth * 0.08) {
+      return 'center';
+    }
+    // If start is within 25% from left
+    if (ocrRegion.x < imgWidth * 0.25) {
+      return 'left';
+    }
+    // If end is near right edge
+    if ((ocrRegion.x + ocrRegion.width) > imgWidth * 0.75) {
+      return 'right';
+    }
+    return 'left';
+  }
+
   fitObjectToText(obj) {
     if (!obj || !obj.text) return;
     const lines = String(obj.text).split('\n');
@@ -864,11 +904,22 @@ class CanvasEditor {
     const newW = Math.max(40, Math.round(maxW + padding));
     const newH = Math.max(20, Math.round(lines.length * lineHeightPx));
 
-    const cx = obj.x + obj.width / 2;
+    // Anchor based on alignment so text stays positioned naturally
+    if (obj.textAlign === 'center') {
+      const cx = obj.x + obj.width / 2;
+      obj.width = newW;
+      obj.x = Math.round(cx - newW / 2);
+    } else if (obj.textAlign === 'right') {
+      const rightX = obj.x + obj.width;
+      obj.width = newW;
+      obj.x = Math.round(rightX - newW);
+    } else {
+      // Left aligned: left position stays fixed
+      obj.width = newW;
+    }
+
     const cy = obj.y + obj.height / 2;
-    obj.width = newW;
     obj.height = newH;
-    obj.x = Math.round(cx - newW / 2);
     obj.y = Math.round(cy - newH / 2);
   }
 
@@ -919,7 +970,17 @@ class CanvasEditor {
     const style = this.repairEngine.estimateStyle(this.sourceCtx, ocrRegion);
 
     const isTamil = /[\u0B80-\u0BFF]/.test(ocrRegion.text);
-    const fontFamily = isTamil ? 'Noto Sans Tamil' : 'Inter';
+    const fontFamily = isTamil ? 'Noto Sans Tamil' : style.fontFamily;
+
+    // Calculate exact font size so replacement glyphs match exact visual height
+    const exactFontSize = this.estimateExactFontSize(
+      ocrRegion.text,
+      ocrRegion.height,
+      fontFamily,
+      style.fontWeight
+    );
+
+    const textAlign = this.estimateAlignment(ocrRegion, this.imageWidth);
 
     const textObj = {
       id: `text-${ocrRegion.id}`,
@@ -930,14 +991,14 @@ class CanvasEditor {
       height: ocrRegion.height,
       rotation: 0,
       fontFamily: fontFamily,
-      fontSize: style.estimatedFontSize,
+      fontSize: exactFontSize,
       fontWeight: style.fontWeight,
       fontStyle: 'normal',
       fillColor: style.textColor,
       opacity: 1.0,
       letterSpacing: 0,
       lineHeight: 1.15,
-      textAlign: 'left',
+      textAlign: textAlign,
       repairBackground: true, // Erases original text!
       repairMethod: 'auto',
       repairPadding: 4,

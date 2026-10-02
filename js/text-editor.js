@@ -48,6 +48,10 @@ class TextEditor {
       // Inline text editor modal/popover
       quickEditModal: document.getElementById('quickEditModal'),
       quickEditText: document.getElementById('quickEditText'),
+      quickEditFontFamily: document.getElementById('quickEditFontFamily'),
+      quickEditFontSize: document.getElementById('quickEditFontSize'),
+      quickEditFontColor: document.getElementById('quickEditFontColor'),
+      btnQuickModalClose: document.getElementById('btnQuickModalClose'),
       btnQuickApply: document.getElementById('btnQuickApply'),
       btnQuickCancel: document.getElementById('btnQuickCancel')
     };
@@ -265,11 +269,28 @@ class TextEditor {
       }
     });
 
-    // Quick Edit Modal
+    if (this.dom.btnQuickModalClose) {
+      this.dom.btnQuickModalClose.addEventListener('click', () => this.closeQuickEdit());
+    }
+
+    // Quick Edit Apply
     this.dom.btnQuickApply.addEventListener('click', () => {
       if (this.selectedObject) {
         this.selectedObject.text = this.dom.quickEditText.value;
-        this.dom.textContent.value = this.selectedObject.text;
+        if (this.dom.quickEditFontFamily) {
+          this.selectedObject.fontFamily = this.dom.quickEditFontFamily.value;
+        }
+        if (this.dom.quickEditFontSize) {
+          const sz = parseInt(this.dom.quickEditFontSize.value, 10);
+          if (sz > 0) this.selectedObject.fontSize = sz;
+        }
+        if (this.dom.quickEditFontColor) {
+          this.selectedObject.fillColor = this.dom.quickEditFontColor.value;
+        }
+
+        // Keep right sidebar properties in sync
+        this.select(this.selectedObject);
+
         this.canvasEditor.fitObjectToText(this.selectedObject);
         this.canvasEditor.render();
         this.canvasEditor.notifyObjectsChange();
@@ -371,7 +392,17 @@ class TextEditor {
 
   openQuickEdit() {
     if (!this.selectedObject) return;
-    this.dom.quickEditText.value = this.selectedObject.text;
+    this.dom.quickEditText.value = this.selectedObject.text || '';
+    if (this.dom.quickEditFontFamily) {
+      this.dom.quickEditFontFamily.value = this.selectedObject.fontFamily || 'Inter';
+    }
+    if (this.dom.quickEditFontSize) {
+      this.dom.quickEditFontSize.value = this.selectedObject.fontSize || 32;
+    }
+    if (this.dom.quickEditFontColor) {
+      this.dom.quickEditFontColor.value = this.selectedObject.fillColor || '#ffffff';
+    }
+
     this.dom.quickEditModal.classList.add('active');
     setTimeout(() => {
       this.dom.quickEditText.focus();
