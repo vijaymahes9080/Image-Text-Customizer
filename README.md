@@ -1,115 +1,165 @@
+<div align="center">
+
 # 🎨 Image Studio Suite
+### Intelligent In-Browser Text Customizer & Watermark Remover
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen?style=for-the-badge&logo=github)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
-[![Pure Vanilla JS](https://img.shields.io/badge/Built%20With-HTML5%20%7C%20CSS3%20%7C%20Vanilla%20JS-blue?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Privacy Guaranteed](https://img.shields.io/badge/Privacy-100%25%20Client--Side-success?style=for-the-badge)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
+<p align="center">
+  <img src="assets/hero-banner.png" alt="Image Studio Suite Hero Banner" width="100%" style="border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.08);">
+</p>
 
-> A high-performance, browser-native suite of intelligent image editing applications: **Image Text Customizer** and **Watermark Remover**. Runs 100% locally in your browser with zero server uploads, no subscription, and full preservation of native image resolution.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-0284c7?style=for-the-badge&logo=github&logoColor=white)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
+[![100% Client-Side](https://img.shields.io/badge/Privacy-100%25%20In--Browser-10b981?style=for-the-badge&logo=shield&logoColor=white)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
+[![Zero Server Uploads](https://img.shields.io/badge/Server%20Uploads-Zero%20(Offline%20Ready)-6366f1?style=for-the-badge)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
+[![OCR Languages](https://img.shields.io/badge/OCR-English%20%7C%20தமிழ்%20(Tamil)-f59e0b?style=for-the-badge)](https://vijaymahes9080.github.io/Image-Text-Customizer/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-38bdf8?style=for-the-badge)](LICENSE)
+
+<p align="center">
+  <a href="https://vijaymahes9080.github.io/Image-Text-Customizer/"><b>🌐 Launch Suite Portal</b></a> •
+  <a href="https://vijaymahes9080.github.io/Image-Text-Customizer/image%20text%20changer.html"><b>📝 Image Text Customizer</b></a> •
+  <a href="https://vijaymahes9080.github.io/Image-Text-Customizer/watermark%20reomover.html"><b>💧 Watermark Remover</b></a>
+</p>
+
+</div>
 
 ---
 
-## 🌐 Live Hosted Web Application
+## 🌟 Overview
 
-Access the fully functional hosted suite directly on GitHub Pages:
+**Image Studio Suite** is an advanced, browser-native digital imaging toolkit designed for high-precision text manipulation and watermark removal. Built entirely with **HTML5 Canvas, Vanilla ES6+ JavaScript, and client-side Web Workers**, the entire application runs directly in your browser with **zero backend dependencies, zero telemetry, and 100% privacy**.
 
-### 🔗 **[https://vijaymahes9080.github.io/Image-Text-Customizer/](https://vijaymahes9080.github.io/Image-Text-Customizer/)**
-
-- **[Image Text Customizer](https://vijaymahes9080.github.io/Image-Text-Customizer/image%20text%20changer.html)** — Detect, inpaint, and customize text on posters, certificates, and photos.
-- **[Watermark Remover](https://vijaymahes9080.github.io/Image-Text-Customizer/watermark%20reomover.html)** — Detect and erase watermarks and stamps in single images or in bulk.
+Whether you need to update dates on event posters, customize recipient names on achievement certificates, or erase distracting watermarks from imagery, Image Studio Suite does it seamlessly without blurry artifacts or crude white boxes.
 
 ---
 
-## ✨ Flagship Applications
+## 📸 Visual Showcase & Workflow
 
-### 1. 📝 Image Text Customizer (`image text changer.html`)
+### 1. 📝 In-Browser Text Customizer (`image text changer.html`)
 
-- **Multi-Pass OCR Pipeline**:
-  - Powered by client-side [Tesseract.js](https://tesseract.projectnaptha.com/) supporting English (`eng`), Tamil (`tam`), or combined (`eng+tam`).
-  - Automatic luminance detection and contrast inversion for light text on dark backgrounds.
-  - Dynamic scaling: automatically upscales small fonts (< 1200px) by 1.5x–2.0x for precision detection.
-  - Word clustering: groups nearby words along horizontal baselines into natural editable sentences without merging distant headings and footers.
-  - Overlap & duplicate filtering using Intersection-over-Union (IoU > 0.45).
-- **Intelligent Background Restoration / Text Inpainting**:
-  - Erases the original text underneath without crude white boxes.
-  - Evaluates perimeter color distribution to apply **Median Solid Fill**, **Directional Linear Gradient Interpolation**, or **Bilinear Patch Inpainting** with border feathering.
-- **Style Estimation**:
-  - Automatically samples foreground glyph colors, background luminance, and dimensions to estimate initial font size, color, and weight.
-- **Typography & Formatting**:
-  - Font families: Inter, Roboto, Arial, Times New Roman, Georgia, and **Noto Sans Tamil**.
-  - Font size, weight, italic, text color, letter spacing, line height, opacity, and rotation (-180° to 180°).
-  - Uppercase and lowercase quick transforms.
-- **Interactive Canvas HUD**:
-  - Drag to move, 4 corner resize handles, top rotation handle.
-  - Zoom HUD: Zoom In, Zoom Out, 100%, 200%, Fit to View, wheel zoom.
-  - Split Before / After comparison slider with draggable divider.
-  - Multi-step Undo (`Ctrl+Z`) and Redo (`Ctrl+Y` / `Ctrl+Shift+Z`).
-- **Bilingual Interface**:
-  - Complete English and Tamil (`தமிழ்`) interface with real-time switching.
+Detect, inpaint, and edit existing text embedded inside images with pixel-matched typography and seamless background restoration.
+
+<p align="center">
+  <img src="assets/text-customizer-workflow.png" alt="Text Customizer Workflow" width="100%" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+</p>
+
+#### 🔍 How It Works:
+1. **Multi-Pass OCR Detection**:
+   - Powered by in-browser [Tesseract.js](https://tesseract.projectnaptha.com/) with dedicated English (`eng`) and Tamil (`tam`) models.
+   - Dynamic luminance detection with automatic contrast inversion for light text on dark backgrounds.
+   - Intelligent baseline clustering that merges adjacent words into natural phrases without combining distant headers and footers.
+2. **Intelligent Inpainting & Background Restoration**:
+   - Samples perimeter pixel variance around the text region to automatically apply:
+     - **Median Solid Color Fill** for flat vector backdrops.
+     - **Directional Linear Gradient Interpolation** for smooth shaded backgrounds.
+     - **Bilinear Texture Synthesis** with edge feathering to completely erase original glyphs without leaving traces.
+3. **Exact Font & Style Matching**:
+   - Measures font metrics (`actualBoundingBoxAscent` + `actualBoundingBoxDescent`) on an offscreen canvas to match the exact font size, weight, line height, and color of the original image text.
+
+<br>
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%" align="center">
+        <b>⚡ Quick Edit & Style Modal</b><br><br>
+        <img src="assets/quick-edit-modal.png" alt="Quick Edit Modal UI" style="border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
+      </td>
+      <td width="50%" align="center">
+        <b>✨ Finished Customized Result</b><br><br>
+        <img src="assets/app-screenshot.png" alt="Completed Customized Certificate" style="border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 4px 14px rgba(0,0,0,0.06);">
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
 ### 2. 💧 Watermark Remover (`watermark reomover.html`)
 
-- **Automatic & Manual Watermark Detection**:
-  - Scans image corners and overlays to identify semi-transparent watermarks and stamps.
-  - Manual brush selection for custom watermarks.
-- **Mathematical Reconstruction**:
-  - Inverse alpha recovery and multi-pass patch synthesis to cleanly erase watermarks.
-- **Batch Processing**:
-  - Process entire folders or multiple image files with real-time queue progress indicators.
-- **Flexible Export**:
-  - Save individual cleaned images or download a consolidated ZIP archive.
+Cleanly identify and erase semi-transparent watermarks, stamps, and logos in single images or across batch queues.
+
+<div align="center">
+  <img src="assets/linkedin-post.png" alt="Complete Suite Feature Overview" width="92%" style="border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,0.08);">
+</div>
+
+- **Automatic Watermark Detection**: Scans edges and high-contrast zones to locate typical watermark positions.
+- **Manual Precision Brush**: Paint directly over custom stamps or complex watermarks with adjustable brush sizing.
+- **Mathematical Reconstruction**: Inverts alpha blending equations and applies multi-pass patch synthesis for clean texture recovery.
+- **Bulk Queue Processing**: Process entire batches of images simultaneously and download as a unified ZIP archive.
 
 ---
 
-## 🔒 Privacy & Architecture
+## ⚡ Feature Comparison
 
-- **100% In-Browser Execution**: Images never leave your device. All canvas transformations, inpainting, and OCR run directly in browser memory.
-- **Full Resolution Preservation**: Exports are rendered against the full native dimensions of the original image (`naturalWidth` × `naturalHeight`), supporting lossless PNG and customizable JPEG (70% - 100% quality).
-- **No Cloud Dependencies**: Zero Node.js or Python backend required for production serving; works as a static web application on any web host.
+| Feature | Cloud AI Tools | Traditional Desktop Apps | 🎨 Image Studio Suite |
+|---|:---:|:---:|:---:|
+| **Server Uploads** | Required (Privacy Risk) | None | **Zero (100% In-Browser)** |
+| **Subscription / Cost** | $15–$30 / month | Expensive License | **100% Free & Open Source** |
+| **Resolution Preservation** | Compresses / Limits Size | Full Resolution | **Lossless Native Resolution** |
+| **Tamil Language OCR** | Rare / Unsupported | Manual Plugin | **Built-in Native Support** |
+| **Installation** | Heavy App / Browser Extension | Heavy Installer | **Zero Install (Instant Web)** |
+| **Speed** | Network dependent | CPU dependent | **Hardware Accelerated Canvas** |
 
 ---
 
-## 📂 Project Directory Structure
+## 🛠️ Architecture & Technical Stack
 
 ```
 Image-Text-Customizer/
 │
-├── index.html                   # Suite landing portal linking both tools
-├── image text changer.html      # Flagship Image Text Customizer app
-├── watermark reomover.html      # Local Watermark Detection & Removal app
+├── index.html                   # Suite portal linking both flagship tools
+├── image text changer.html      # Flagship Image Text Customizer application
+├── watermark reomover.html      # In-Browser Watermark Remover & Batch Engine
 │
 ├── css/
-│   └── style.css                # SaaS theme system (Dark & Light modes)
+│   └── style.css                # Fluid CSS design tokens (Light & Dark themes)
 │
 ├── js/
-│   ├── app.js                   # Application coordinator & state management
+│   ├── app.js                   # Application coordinator & event dispatcher
 │   ├── ocr.js                   # Preprocessed multi-pass Tesseract OCR engine
 │   ├── background-repair.js     # Bi-harmonic patch inpainting & gradient restoration
-│   ├── canvas-editor.js         # Interactive HTML5 Canvas engine (pan, zoom, handles)
-│   ├── text-editor.js           # Typography, style estimation & floating controls
-│   ├── history.js               # Multi-step Undo / Redo history manager
-│   ├── export.js                # Full native resolution PNG & JPEG exporter
-│   └── utils.js                 # Math, color helpers, and Tamil/English I18N
+│   ├── canvas-editor.js         # Interactive HTML5 Canvas engine with exact metric matching
+│   ├── text-editor.js           # Typography engine, Quick Edit modal & style synchronization
+│   ├── history.js               # Multi-step Undo / Redo history state stack
+│   ├── export.js                # Lossless PNG and quality-tuned JPEG export pipeline
+│   └── utils.js                 # Matrix math, color analysis, and English/Tamil I18N
 │
-├── .github/
-│   └── workflows/
-│       └── pages.yml            # Automated GitHub Pages CI/CD workflow
-│
-├── .gitignore                   # Ignored files and directories
+├── assets/                      # High-resolution screenshots and showcase banners
+├── .github/workflows/pages.yml  # Automated GitHub Pages CI/CD deployment
+├── image.png                    # LinkedIn & Social Media announcement banner
 ├── LICENSE                      # MIT Open-Source License
-├── composer.json                # Project and author metadata
-└── README.md                    # Project documentation
+└── README.md                    # Comprehensive documentation
 ```
+
+### Core Technologies:
+- **Core Engine**: HTML5 Canvas API, Web Audio / Workers, Vanilla ES6+ JavaScript.
+- **Typography & Font Engine**: Offscreen Canvas `TextMetrics`, Google Fonts (*Inter, Roboto, Times New Roman, Georgia, Noto Sans Tamil*).
+- **OCR Engine**: Client-side [Tesseract.js v5](https://github.com/naptha/tesseract.js).
+- **Inpainting Engine**: Statistical perimeter luminance sampling, directional linear gradients, and bi-linear neighborhood synthesis.
+- **Packaging & Delivery**: Static zero-build structure deployed directly via GitHub Pages.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Description |
+|---|---|
+| <kbd>V</kbd> | Activate Select / Pointer Tool |
+| <kbd>T</kbd> | Activate Add Text Tool |
+| <kbd>H</kbd> or <kbd>Space</kbd> + Drag | Pan Canvas Viewport |
+| <kbd>Ctrl</kbd> + <kbd>Z</kbd> | Undo Last Action |
+| <kbd>Ctrl</kbd> + <kbd>Y</kbd> / <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd> | Redo Last Action |
+| <kbd>Enter</kbd> (in Quick Edit) | Apply Text Changes |
+| <kbd>Escape</kbd> (in Quick Edit) | Cancel & Close Quick Edit Modal |
+| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete Selected Text Object |
+| <kbd>Mouse Wheel</kbd> | Smooth Cursor-Centered Zoom |
 
 ---
 
 ## 🚀 Running Locally
 
-You can run the suite locally using any static web server:
+You can run the entire suite locally without any build steps or complex dependencies:
 
-### Using Python:
+### Option 1: Python HTTP Server
 ```bash
 # Clone the repository
 git clone https://github.com/vijaymahes9080/Image-Text-Customizer.git
@@ -118,9 +168,9 @@ cd Image-Text-Customizer
 # Start local server
 python -m http.server 8080
 ```
-Open **`http://localhost:8080`** in your browser.
+Open [http://localhost:8080](http://localhost:8080) in your web browser.
 
-### Using Node.js:
+### Option 2: Node.js
 ```bash
 npx serve .
 # or
@@ -129,29 +179,34 @@ npx http-server -p 8080
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## 📢 LinkedIn Post Asset
 
-| Shortcut | Action |
-|---|---|
-| `V` | Select Tool |
-| `T` | Add Custom Text Tool |
-| `H` or `Space + Drag` | Pan Canvas Viewport |
-| `Ctrl + Z` / `Cmd + Z` | Undo |
-| `Ctrl + Y` / `Ctrl + Shift + Z` | Redo |
-| `Delete` / `Backspace` | Delete Selected Text Region |
-| `Mouse Wheel` | Zoom in / Zoom out centered on cursor |
+The project includes an optimized, high-resolution announcement banner formatted for social media:
+
+- **Primary Image File**: [`image.png`](image.png) (also available at [`assets/linkedin-post.png`](assets/linkedin-post.png)).
+- Ready to attach when sharing the project on LinkedIn, Twitter/X, and developer portfolios.
 
 ---
 
-## 👤 Developer & Maintainer
+## 👤 Author & Maintainer
 
-- **Developer**: **Vijay Mahes**
-- **Email**: [Vijaypradhap2004@gmail.com](mailto:Vijaypradhap2004@gmail.com)
-- **GitHub Profile**: [@vijaymahes9080](https://github.com/vijaymahes9080)
-- **Repository**: [https://github.com/vijaymahes9080/Image-Text-Customizer](https://github.com/vijaymahes9080/Image-Text-Customizer)
+<table style="border: none;">
+  <tr>
+    <td>
+      <h3>Vijay Mahes</h3>
+      <p>
+        Full-Stack Engineer &amp; Open-Source Creator<br>
+        📧 <b>Email:</b> <a href="mailto:Vijaypradhap2004@gmail.com">Vijaypradhap2004@gmail.com</a><br>
+        🐙 <b>GitHub:</b> <a href="https://github.com/vijaymahes9080">@vijaymahes9080</a><br>
+        ⭐ <b>Project Repository:</b> <a href="https://github.com/vijaymahes9080/Image-Text-Customizer">Image-Text-Customizer</a><br>
+        🌐 <b>Live Deployment:</b> <a href="https://vijaymahes9080.github.io/Image-Text-Customizer/">Live Suite Portal</a>
+      </p>
+    </td>
+  </tr>
+</table>
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for complete details.
