@@ -382,7 +382,7 @@ class OCREngine {
    * Word extraction & intelligent horizontal line clustering.
    * Prevents clumping entire page together while avoiding isolated word boxes.
    */
-  extractAndClusterWords(ocrData, scale, origW, origH) {
+  extractAndClusterWords(ocrData, scale, imgOrigW, imgOrigH) {
     const words = [];
 
     // Tesseract words extraction
@@ -497,14 +497,14 @@ class OCREngine {
       // Map back from scaled OCR space to Original Image space
       const origX = Math.round(minX / scale);
       const origY = Math.round(minY / scale);
-      const origW = Math.round((maxX - minX) / scale);
-      const origH = Math.round((maxY - minY) / scale);
+      const boxW = Math.round((maxX - minX) / scale);
+      const boxH = Math.round((maxY - minY) / scale);
 
-      // Clamp within original image boundaries
-      const clampedX = Math.max(0, Math.min(origW - 1, origX));
-      const clampedY = Math.max(0, Math.min(origH - 1, origY));
-      const clampedW = Math.min(origW - clampedX, origW);
-      const clampedH = Math.min(origH - clampedY, origH);
+      // Clamp within original image boundaries without parameter shadowing
+      const clampedX = Math.max(0, Math.min(imgOrigW - 1, origX));
+      const clampedY = Math.max(0, Math.min(imgOrigH - 1, origY));
+      const clampedW = Math.min(imgOrigW - clampedX, boxW);
+      const clampedH = Math.min(imgOrigH - clampedY, boxH);
 
       if (clampedW >= 8 && clampedH >= 6) {
         regions.push({

@@ -39,6 +39,10 @@ class App {
       this.updateLayersUI();
     };
 
+    this.canvasEditor.onOpenQuickEditCallback = (obj) => {
+      this.textEditor.openQuickEdit();
+    };
+
     this.canvasEditor.onObjectsChangeCallback = (objects, selectedId) => {
       this.updateLayersUI();
     };
@@ -555,8 +559,8 @@ class App {
       if (regions && regions.length > 0) {
         this.canvasEditor.setOCRRegions(regions);
         const successMsg = ITCUtils.getTranslation('ocrSuccess', { count: regions.length });
-        ITCUtils.showToast(successMsg, 'success');
-        this.dom.ocrStatusText.textContent = `${regions.length} text regions detected`;
+        ITCUtils.showToast(`${successMsg} • Click or double-click any text to edit!`, 'success', 4000);
+        this.dom.ocrStatusText.textContent = `${regions.length} text regions detected (Click or double-click to edit)`;
       } else {
         ITCUtils.showToast('No reliable text was detected automatically. You can still add text manually.', 'info', 4500);
         this.dom.ocrStatusText.textContent = 'No text detected. Use "Add Text" manually.';

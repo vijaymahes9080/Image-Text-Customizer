@@ -58,6 +58,7 @@ class CanvasEditor {
     this.onObjectsChangeCallback = null;
     this.onHistoryPushCallback = null;
     this.onStatusChangeCallback = null;
+    this.onOpenQuickEditCallback = null;
 
     this.initCanvasSize();
     this.bindEvents();
@@ -561,6 +562,7 @@ class CanvasEditor {
     });
 
     this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    this.canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e));
     window.addEventListener('mousemove', (e) => this.onMouseMove(e));
     window.addEventListener('mouseup', (e) => this.onMouseUp(e));
     this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
@@ -580,6 +582,28 @@ class CanvasEditor {
         this.canvas.style.cursor = 'default';
       }
     });
+  }
+
+  onDoubleClick(e) {
+    if (!this.image) return;
+    const rect = this.canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const hit = this.hitTest(sx, sy);
+
+    if (hit && hit.type === 'ocr') {
+      const textObj = this.convertOCRToEditableText(hit.region);
+      this.selectObject(textObj.id);
+      if (this.onOpenQuickEditCallback) {
+        this.onOpenQuickEditCallback(textObj);
+      }
+    } else if (hit && (hit.type === 'object' || (hit.type === 'handle' && hit.object))) {
+      const targetObj = hit.type === 'object' ? hit.object : hit.object;
+      this.selectObject(targetObj.id);
+      if (this.onOpenQuickEditCallback) {
+        this.onOpenQuickEditCallback(targetObj);
+      }
+    }
   }
 
   onMouseDown(e) {
@@ -633,7 +657,12 @@ class CanvasEditor {
       this.canvas.style.cursor = 'move';
     } else if (hit.type === 'ocr') {
       // Clicked OCR region -> convert to editable TextObject!
-      this.convertOCRToEditableText(hit.region);
+      const newObj = this.convertOCRToEditableText(hit.region);
+      this.selectObject(newObj.id);
+      this.interactionMode = 'move';
+      this.dragStart = { x: sx, y: sy };
+      this.dragOriginObject = JSON.parse(JSON.stringify(newObj));
+      this.canvas.style.cursor = 'move';
     }
 
     this.render();
@@ -810,6 +839,39 @@ class CanvasEditor {
     }
   }
 
+  fitObjectToText(obj) {
+    if (!obj || !obj.text) return;
+    const lines = String(obj.text).split('\n');
+    const fontSize = obj.fontSize || 32;
+    const lineHeightPx = fontSize * (obj.lineHeight || 1.2);
+    const fontStyle = obj.fontStyle === 'italic' ? 'italic' : 'normal';
+    const fontWeight = obj.fontWeight || 'normal';
+
+    this.ctx.save();
+    this.ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px "${obj.fontFamily || 'Arial'}", sans-serif`;
+
+    let maxW = 0;
+    for (const line of lines) {
+      let w = this.ctx.measureText(line).width;
+      if (obj.letterSpacing && obj.letterSpacing !== 0) {
+        w += Math.max(0, Array.from(line).length - 1) * obj.letterSpacing;
+      }
+      if (w > maxW) maxW = w;
+    }
+    this.ctx.restore();
+
+    const padding = 16;
+    const newW = Math.max(40, Math.round(maxW + padding));
+    const newH = Math.max(20, Math.round(lines.length * lineHeightPx));
+
+    const cx = obj.x + obj.width / 2;
+    const cy = obj.y + obj.height / 2;
+    obj.width = newW;
+    obj.height = newH;
+    obj.x = Math.round(cx - newW / 2);
+    obj.y = Math.round(cy - newH / 2);
+  }
+
   addCustomText(imgX, imgY) {
     const newId = `txt-${Date.now()}`;
     const defaultText = ITCUtils.getTranslation('textAdded') || 'Custom Text';
@@ -823,7 +885,7 @@ class CanvasEditor {
       height: 48,
       rotation: 0,
       fontFamily: 'Inter',
-      fontSize: 28,
+      fontSize: 32,
       fontWeight: 'bold',
       fontStyle: 'normal',
       fillColor: '#ffffff',
@@ -839,16 +901,25 @@ class CanvasEditor {
       visible: true
     };
 
+    this.fitObjectToText(textObj);
     this.textObjects.push(textObj);
     this.selectObject(newId);
     this.saveHistoryState('Add Custom Text');
     this.notifyObjectsChange();
     this.render();
+
+    if (this.onOpenQuickEditCallback) {
+      this.onOpenQuickEditCallback(textObj);
+    }
+    return textObj;
   }
 
   convertOCRToEditableText(ocrRegion) {
     // Estimate style from underlying original image
     const style = this.repairEngine.estimateStyle(this.sourceCtx, ocrRegion);
+
+    const isTamil = /[\u0B80-\u0BFF]/.test(ocrRegion.text);
+    const fontFamily = isTamil ? 'Noto Sans Tamil' : 'Inter';
 
     const textObj = {
       id: `text-${ocrRegion.id}`,
@@ -858,7 +929,7 @@ class CanvasEditor {
       width: ocrRegion.width,
       height: ocrRegion.height,
       rotation: 0,
-      fontFamily: 'Arial',
+      fontFamily: fontFamily,
       fontSize: style.estimatedFontSize,
       fontWeight: style.fontWeight,
       fontStyle: 'normal',
@@ -881,6 +952,7 @@ class CanvasEditor {
     this.saveHistoryState(`Edit Detected: "${ocrRegion.text}"`);
     this.notifyObjectsChange();
     this.render();
+    return textObj;
   }
 
   duplicateObject(textObj) {

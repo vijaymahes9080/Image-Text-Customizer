@@ -58,7 +58,9 @@ class TextEditor {
     this.dom.textContent.addEventListener('input', (e) => {
       if (!this.selectedObject || this.isUpdatingUI) return;
       this.selectedObject.text = e.target.value;
+      this.canvasEditor.fitObjectToText(this.selectedObject);
       this.canvasEditor.render();
+      this.canvasEditor.notifyObjectsChange();
       this.pushHistoryDebounced('Edit Text Content');
     });
 
@@ -66,6 +68,7 @@ class TextEditor {
     this.dom.fontFamily.addEventListener('change', (e) => {
       if (!this.selectedObject || this.isUpdatingUI) return;
       this.selectedObject.fontFamily = e.target.value;
+      this.canvasEditor.fitObjectToText(this.selectedObject);
       this.canvasEditor.render();
       this.saveHistory('Change Font Family');
     });
@@ -76,6 +79,7 @@ class TextEditor {
       const size = parseInt(e.target.value, 10);
       this.selectedObject.fontSize = size;
       if (this.dom.fontSizeVal) this.dom.fontSizeVal.textContent = `${size}px`;
+      this.canvasEditor.fitObjectToText(this.selectedObject);
       this.canvasEditor.render();
       this.pushHistoryDebounced('Change Font Size');
     });
@@ -91,9 +95,8 @@ class TextEditor {
 
     // Font Color Hex Input
     if (this.dom.fontColorHex) {
-      this.dom.fontColorHex.addEventListener('change', (e) => {
-        if (!this.selectedObject || this.isUpdatingUI) return;
-        let hex = e.target.value.trim();
+      const applyHex = (hexVal) => {
+        let hex = hexVal.trim();
         if (!hex.startsWith('#')) hex = '#' + hex;
         if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
           this.selectedObject.fillColor = hex;
@@ -101,6 +104,14 @@ class TextEditor {
           this.canvasEditor.render();
           this.saveHistory('Change Text Color');
         }
+      };
+      this.dom.fontColorHex.addEventListener('input', (e) => {
+        if (!this.selectedObject || this.isUpdatingUI) return;
+        applyHex(e.target.value);
+      });
+      this.dom.fontColorHex.addEventListener('change', (e) => {
+        if (!this.selectedObject || this.isUpdatingUI) return;
+        applyHex(e.target.value);
       });
     }
 
@@ -127,7 +138,9 @@ class TextEditor {
       if (!this.selectedObject) return;
       this.selectedObject.text = this.selectedObject.text.toUpperCase();
       this.dom.textContent.value = this.selectedObject.text;
+      this.canvasEditor.fitObjectToText(this.selectedObject);
       this.canvasEditor.render();
+      this.canvasEditor.notifyObjectsChange();
       this.saveHistory('Transform Uppercase');
     });
 
@@ -135,7 +148,9 @@ class TextEditor {
       if (!this.selectedObject) return;
       this.selectedObject.text = this.selectedObject.text.toLowerCase();
       this.dom.textContent.value = this.selectedObject.text;
+      this.canvasEditor.fitObjectToText(this.selectedObject);
       this.canvasEditor.render();
+      this.canvasEditor.notifyObjectsChange();
       this.saveHistory('Transform Lowercase');
     });
 
@@ -233,14 +248,34 @@ class TextEditor {
       }
     });
 
+    // Quick Edit Keyboard shortcuts & backdrop click
+    this.dom.quickEditText.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (!e.shiftKey || e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.dom.btnQuickApply.click();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        this.closeQuickEdit();
+      }
+    });
+
+    this.dom.quickEditModal.addEventListener('click', (e) => {
+      if (e.target === this.dom.quickEditModal) {
+        this.closeQuickEdit();
+      }
+    });
+
     // Quick Edit Modal
     this.dom.btnQuickApply.addEventListener('click', () => {
       if (this.selectedObject) {
         this.selectedObject.text = this.dom.quickEditText.value;
         this.dom.textContent.value = this.selectedObject.text;
+        this.canvasEditor.fitObjectToText(this.selectedObject);
         this.canvasEditor.render();
+        this.canvasEditor.notifyObjectsChange();
         this.saveHistory('Quick Edit Text');
         this.closeQuickEdit();
+        ITCUtils.showToast('Text updated!', 'success', 1200);
       }
     });
 
@@ -268,6 +303,14 @@ class TextEditor {
       this.dom.noSelectionNotice.style.display = 'flex';
       this.dom.floatingToolbar.style.display = 'none';
       return;
+    }
+
+    // Automatically switch right panel to "Text" tab if not currently active
+    const textTabBtn = document.querySelector('.panel-tab-btn[data-tab="text"]');
+    const textTabPanel = document.getElementById('tab-text');
+    if (textTabBtn && textTabPanel && !textTabBtn.classList.contains('active')) {
+      document.querySelectorAll('.panel-tab-btn').forEach(b => b.classList.toggle('active', b === textTabBtn));
+      document.querySelectorAll('.panel-tab-content').forEach(p => p.classList.toggle('active', p === textTabPanel));
     }
 
     this.isUpdatingUI = true;
@@ -330,7 +373,10 @@ class TextEditor {
     if (!this.selectedObject) return;
     this.dom.quickEditText.value = this.selectedObject.text;
     this.dom.quickEditModal.classList.add('active');
-    setTimeout(() => this.dom.quickEditText.focus(), 50);
+    setTimeout(() => {
+      this.dom.quickEditText.focus();
+      this.dom.quickEditText.select();
+    }, 50);
   }
 
   closeQuickEdit() {

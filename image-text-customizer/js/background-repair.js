@@ -81,9 +81,9 @@ class BackgroundRepairEngine {
   /**
    * Calculate average / median color and standard deviation.
    */
-  analyzeColorDistribution(pixels) {
+  analyzeColorDistribution(pixels, fallbackAvg = null) {
     if (!pixels || pixels.length === 0) {
-      return { avg: { r: 255, g: 255, b: 255 }, variance: 0 };
+      return { avg: fallbackAvg ? { ...fallbackAvg } : { r: 255, g: 255, b: 255 }, variance: 0 };
     }
 
     let sumR = 0, sumG = 0, sumB = 0;
@@ -133,10 +133,10 @@ class BackgroundRepairEngine {
     const { rx, ry, rw, rh, topPixels, bottomPixels, leftPixels, rightPixels, allPerimeterPixels } = perimeter;
     const overallStats = this.analyzeColorDistribution(allPerimeterPixels);
 
-    const topStats = this.analyzeColorDistribution(topPixels);
-    const bottomStats = this.analyzeColorDistribution(bottomPixels);
-    const leftStats = this.analyzeColorDistribution(leftPixels);
-    const rightStats = this.analyzeColorDistribution(rightPixels);
+    const topStats = this.analyzeColorDistribution(topPixels, overallStats.avg);
+    const bottomStats = this.analyzeColorDistribution(bottomPixels, overallStats.avg);
+    const leftStats = this.analyzeColorDistribution(leftPixels, overallStats.avg);
+    const rightStats = this.analyzeColorDistribution(rightPixels, overallStats.avg);
 
     // Determine strategy
     let chosenMethod = method;
@@ -186,7 +186,7 @@ class BackgroundRepairEngine {
 
     // Apply soft edge feathering to eliminate harsh border lines
     if (feather > 0) {
-      this.featherEdges(targetCtx, sourceCtx, rx, ry, rw, rh, feather);
+      this.featherEdges(targetCtx, sourceCtx, rx, ry, rw, rh, feather, padding);
     }
 
     targetCtx.restore();
@@ -203,11 +203,12 @@ class BackgroundRepairEngine {
     const pImgData = pCtx.createImageData(rw, rh);
     const data = pImgData.data;
 
-    const top = this.analyzeColorDistribution(perimeter.topPixels).avg;
-    const bottom = this.analyzeColorDistribution(perimeter.bottomPixels).avg;
-    const left = this.analyzeColorDistribution(perimeter.leftPixels).avg;
-    const right = this.analyzeColorDistribution(perimeter.rightPixels).avg;
-    const variance = this.analyzeColorDistribution(perimeter.allPerimeterPixels).variance;
+    const overall = this.analyzeColorDistribution(perimeter.allPerimeterPixels);
+    const top = this.analyzeColorDistribution(perimeter.topPixels, overall.avg).avg;
+    const bottom = this.analyzeColorDistribution(perimeter.bottomPixels, overall.avg).avg;
+    const left = this.analyzeColorDistribution(perimeter.leftPixels, overall.avg).avg;
+    const right = this.analyzeColorDistribution(perimeter.rightPixels, overall.avg).avg;
+    const variance = overall.variance;
 
     // Pseudo-random deterministic noise seed for natural texture
     const noiseScale = Math.min(12, variance * 0.4);
@@ -252,8 +253,9 @@ class BackgroundRepairEngine {
   /**
    * Feather boundary edges so repaired patch seamlessly merges with original background
    */
-  featherEdges(targetCtx, sourceCtx, rx, ry, rw, rh, featherSize) {
-    const f = Math.min(featherSize, Math.floor(Math.min(rw, rh) / 4));
+  featherEdges(targetCtx, sourceCtx, rx, ry, rw, rh, featherSize, padding = 4) {
+    const maxSafeFeather = Math.max(0, padding - 1);
+    const f = Math.min(featherSize, maxSafeFeather, Math.floor(Math.min(rw, rh) / 4));
     if (f <= 0) return;
 
     // Grab repaired patch from targetCtx
