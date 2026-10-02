@@ -326,23 +326,26 @@ class BackgroundRepairEngine {
       const dist = ITCUtils.colorDistance({ r, g, b }, bgAvg);
 
       if (dist > 35) {
-        textPixels.push({ r, g, b });
+        textPixels.push({ r, g, b, dist });
       }
     }
 
     let textAvg;
     if (textPixels.length > 5) {
-      // Find mode / clusters of text pixels
+      // Sort by contrast distance from background descending
+      // Core text glyph pixels have the highest distance from background
+      textPixels.sort((a, b) => b.dist - a.dist);
+      const coreCount = Math.max(3, Math.floor(textPixels.length * 0.45));
       let sumR = 0, sumG = 0, sumB = 0;
-      for (const p of textPixels) {
-        sumR += p.r;
-        sumG += p.g;
-        sumB += p.b;
+      for (let i = 0; i < coreCount; i++) {
+        sumR += textPixels[i].r;
+        sumG += textPixels[i].g;
+        sumB += textPixels[i].b;
       }
       textAvg = {
-        r: Math.round(sumR / textPixels.length),
-        g: Math.round(sumG / textPixels.length),
-        b: Math.round(sumB / textPixels.length)
+        r: Math.round(sumR / coreCount),
+        g: Math.round(sumG / coreCount),
+        b: Math.round(sumB / coreCount)
       };
     } else {
       // Fallback: if bg is dark, make text white, else black
@@ -350,14 +353,28 @@ class BackgroundRepairEngine {
       textAvg = bgLum < 128 ? { r: 255, g: 255, b: 255 } : { r: 20, g: 20, b: 20 };
     }
 
-    // Font size estimation based on box height and line height
-    const estimatedFontSize = Math.max(12, Math.round(bh * 0.72));
+    // Weight estimation based on text pixel density
+    const fillDensity = textPixels.length / (bw * bh);
+    let fontWeight = 'bold';
+    if (fillDensity < 0.20) {
+      fontWeight = 'normal';
+    } else if (fillDensity < 0.30) {
+      fontWeight = '500';
+    } else {
+      fontWeight = 'bold';
+    }
+
+    let fontFamily = 'Inter';
+    if (/[\u0B80-\u0BFF]/.test(box.text || '')) {
+      fontFamily = 'Noto Sans Tamil';
+    }
 
     return {
       textColor: ITCUtils.rgbToHex(textAvg.r, textAvg.g, textAvg.b),
       bgColor: ITCUtils.rgbToHex(bgAvg.r, bgAvg.g, bgAvg.b),
-      estimatedFontSize,
-      fontWeight: 'bold'
+      estimatedFontSize: Math.max(14, Math.round(bh * 0.95)),
+      fontWeight,
+      fontFamily
     };
   }
 }
